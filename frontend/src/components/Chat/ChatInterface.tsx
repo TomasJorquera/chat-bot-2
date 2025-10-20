@@ -45,7 +45,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ character, onBack }) => {
     // Al entrar al chat, reinicia el historial del personaje en el backend
     // y muestra el saludo inicial en el frontend.
     const startNewSession = async () => {
-      await fetch('http://localhost:8000/chat/restart', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      await fetch(`${apiUrl}/chat/restart`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ character: character }),
@@ -81,7 +82,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ character, onBack }) => {
 
     setIsTyping(true);
     try {
-      const apiResponse = await fetch('http://localhost:8000/chat', {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const apiResponse = await fetch(`${apiUrl}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -160,7 +162,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ character, onBack }) => {
 
   const handleRestart = async () => {
     try {
-      await fetch('http://localhost:8000/chat/restart', { 
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      await fetch(`${apiUrl}/chat/restart`, { 
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
