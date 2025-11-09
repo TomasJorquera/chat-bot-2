@@ -67,7 +67,7 @@ const HomePage: React.FC = () => {
             
             <p className="text-xl md:text-2xl text-[#37474F] mb-12 max-w-3xl mx-auto leading-relaxed">
               para conversar con <strong className="text-[#1E88E5]">Teo</strong> y{' '}
-              <strong className="text-[#1E88E5]">Josefina</strong>
+              <strong className="text-[#1E88E5]">Jojo</strong>
             </p>
 
             <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
@@ -162,10 +162,10 @@ const HomePage: React.FC = () => {
                 <div className="w-20 h-20 bg-gradient-to-br from-pink-400 to-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="text-3xl">👧</span>
                 </div>
-                <h3 className="text-2xl font-bold text-[#0D47A1] mb-2">Josefina</h3>
+                <h3 className="text-2xl font-bold text-[#0D47A1] mb-2">Jojo</h3>
                 <p className="text-[#37474F] mb-4">15 años • 1º Medio</p>
                 <p className="text-[#37474F] text-sm leading-relaxed">
-                  Josefina es tímida y tiene dificultades intelectuales leves. 
+                  Jojo es tímida y tiene dificultades intelectuales leves. 
                   Le gusta la música y el fútbol, y aprende mejor con ejemplos concretos.
                 </p>
               </div>

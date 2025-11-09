@@ -4,7 +4,7 @@ import { Message } from '../../types';
 import EvaluationPdfPreview from './EvaluationPdfPreview';
 
 interface ChatInterfaceProps {
-  character: 'Teo' | 'Josefina';
+  character: 'Teo' | 'Jojo';
   onBack: () => void;
 }
 
@@ -26,12 +26,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
       personality: 'Tímido pero curioso, prefiere ejemplos visuales',
       greeting: '¡Hola! Soy Teo. A veces me cuesta leer, pero me gusta aprender con dibujos y colores. ¿Me puedes ayudar?'
     },
-    Josefina: {
+    Jojo: {
       emoji: '👧',
       age: 15,
       grade: '1º Medio',
       personality: 'Tímida, aprende mejor con ejemplos concretos',
-      greeting: '¡Hola! Soy Josefina. Me gusta la música y el fútbol. A veces necesito que me expliquen las cosas con ejemplos. ¿Podemos conversar?'
+      greeting: '¡Hola! Soy Jojo. Me gusta la música y el fútbol. A veces necesito que me expliquen las cosas con ejemplos. ¿Podemos conversar?'
     }
   };
 

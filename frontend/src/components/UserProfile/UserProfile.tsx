@@ -11,7 +11,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
 
   const mockConversations = [
     { id: '1', character: 'Teo', date: '2024-01-15', score: 85 },
-    { id: '2', character: 'Josefina', date: '2024-01-14', score: 92 },
+    { id: '2', character: 'Jojo', date: '2024-01-14', score: 92 },
     { id: '3', character: 'Teo', date: '2024-01-13', score: 78 },
   ];
 
@@ -121,7 +121,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
                 <div className="text-center py-8 text-[#37474F]">
                   <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p>No tienes conversaciones aún</p>
-                  <p className="text-sm">¡Comienza a chatear con Teo y Josefina!</p>
+                  <p className="text-sm">¡Comienza a chatear con Teo y Jojo!</p>
                 </div>
               )}
             </div>

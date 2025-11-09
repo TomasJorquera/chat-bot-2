@@ -9,7 +9,7 @@ export interface User {
 export interface Conversation {
   id: string;
   userId: string;
-  character: 'teo' | 'josefina';
+  character: 'teo' | 'jojo';
   messages: Message[];
   createdAt: Date;
   score?: number;

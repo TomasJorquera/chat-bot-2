@@ -60,16 +60,45 @@ const EvaluationPdfPreview: React.FC<Props> = (props: Props) => {
       styles: { fontSize: 10 }
     });
 
-    const afterEval = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 20 : afterConv + 160;
+    const afterEval = (doc as any).lastAutoTable ? (doc as any).lastAutoTable.finalY + 30 : afterConv + 180;
 
-    // Conclusiones
-    conclusion.forEach((c: { title: string; text: string }, idx: number) => {
+    // Conclusiones — calcular altura real del texto, manejar saltos de página y margen inferior
+    const pageHeight = (doc as any).internal?.pageSize?.getHeight ? (doc as any).internal.pageSize.getHeight() : (doc as any).internal.pageSize.height;
+    const topMargin = 40;
+    const bottomMargin = 50;
+    let currentY = afterEval;
+    const maxWidth = 520;
+
+    conclusion.forEach((c: { title: string; text: string }) => {
+      // Medir texto dividido para calcular altura real
       doc.setFontSize(12);
-      doc.text(c.title, 40, afterEval + idx * 40);
+      const titleHeight = 14; // aprox
+
       doc.setFontSize(10);
-      doc.text(c.text, 40, afterEval + 16 + idx * 40, { maxWidth: 520 });
+      const splitText = doc.splitTextToSize(c.text, maxWidth);
+      const lineHeight = 12; // pts per line for fontSize 10
+      const textHeight = splitText.length * lineHeight;
+      const blockHeight = titleHeight + 6 + textHeight + 12; // título + separador + texto + padding
+
+      // Si no cabe en la página actual, agregar nueva página
+      if (currentY + blockHeight > pageHeight - bottomMargin) {
+        doc.addPage();
+        currentY = topMargin;
+      }
+
+      // Escribir título
+      doc.setFontSize(12);
+      doc.text(c.title, 40, currentY);
+
+      // Escribir texto partido
+      doc.setFontSize(10);
+      doc.text(splitText, 40, currentY + 16, { maxWidth });
+
+      // Avanzar cursor
+      currentY = currentY + blockHeight;
     });
 
+    // Guardar PDF
     doc.save(`evaluacion_${character.toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 

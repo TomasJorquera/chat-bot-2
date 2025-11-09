@@ -8,7 +8,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Chatbot Educativo API",
-    description="API para interactuar con los chatbots Teo y Josefina.",
+    description="API para interactuar con los chatbots Teo y Jojo.",
     version="1.0.0"
 )
 

@@ -48,7 +48,7 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ onBack }) => {
 
   const mockReports = [
     { id: '1', date: '2024-01-15', character: 'Teo', score: 85, duration: '12 min' },
-    { id: '2', date: '2024-01-14', character: 'Josefina', score: 92, duration: '18 min' },
+    { id: '2', date: '2024-01-14', character: 'Jojo', score: 92, duration: '18 min' },
     { id: '3', date: '2024-01-13', character: 'Teo', score: 78, duration: '15 min' },
   ];
 
@@ -175,9 +175,9 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ onBack }) => {
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[#37474F]">Con Josefina</span>
+                    <span className="text-[#37474F]">Con Jojo</span>
                     <span className="text-[#37474F]">
-                      {mockReports.filter(r => r.character === 'Josefina').length}
+                      {mockReports.filter(r => r.character === 'Jojo').length}
                     </span>
                   </div>
                 </div>

@@ -8,7 +8,7 @@ type ViewType = 'dashboard' | 'chat' | 'students';
 
 const TeacherDashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
-  const [selectedCharacter, setSelectedCharacter] = useState<'Teo' | 'Josefina' | null>(null);
+  const [selectedCharacter, setSelectedCharacter] = useState<'Teo' | 'Jojo' | null>(null);
 
   if (currentView === 'chat' && selectedCharacter) {
     return (
@@ -39,9 +39,9 @@ const TeacherDashboard: React.FC = () => {
           <h1 className="text-4xl font-bold text-[#0D47A1] mb-4">
             Panel del Docente
           </h1>
-          <p className="text-lg text-[#37474F] max-w-2xl mx-auto">
+            <p className="text-lg text-[#37474F] max-w-2xl mx-auto">
             Gestiona a tus estudiantes, monitorea su progreso y también puedes conversar 
-            con Teo y Josefina para entender mejor la experiencia educativa.
+            con Teo y Jojo para entender mejor la experiencia educativa.
           </p>
         </div>
 
@@ -95,8 +95,8 @@ const TeacherDashboard: React.FC = () => {
               Experimenta la Conversación
             </h2>
           </div>
-          <p className="text-center text-[#37474F] mb-8 max-w-2xl mx-auto">
-            Como docente, también puedes conversar con Teo y Josefina para entender mejor 
+            <p className="text-center text-[#37474F] mb-8 max-w-2xl mx-auto">
+            Como docente, también puedes conversar con Teo y Jojo para entender mejor 
             cómo interactúan tus estudiantes y obtener insights valiosos.
           </p>
 
@@ -114,13 +114,13 @@ const TeacherDashboard: React.FC = () => {
             />
 
             <CharacterCard
-              name="Josefina"
+              name="Jojo"
               age={15}
               grade="1º Medio"
-              description="Conoce cómo Josefina, con dificultades intelectuales leves, responde mejor a ejemplos concretos y temas de su interés."
+              description="Conoce cómo Jojo, con dificultades intelectuales leves, responde mejor a ejemplos concretos y temas de su interés."
               interests={['Música', 'Fútbol', 'Ejemplos prácticos']}
               onClick={() => {
-                setSelectedCharacter('Josefina');
+                setSelectedCharacter('Jojo');
                 setCurrentView('chat');
               }}
             />

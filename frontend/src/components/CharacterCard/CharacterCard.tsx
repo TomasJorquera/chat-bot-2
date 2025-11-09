@@ -2,7 +2,7 @@ import React from 'react';
 import { MessageSquare, Heart, BookOpen } from 'lucide-react';
 
 interface CharacterCardProps {
-  name: 'Teo' | 'Josefina';
+  name: 'Teo' | 'Jojo';
   age: number;
   grade: string;
   description: string;

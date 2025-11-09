@@ -4,7 +4,7 @@ import CharacterCard from '../CharacterCard/CharacterCard';
 import ChatInterface from '../Chat/ChatInterface';
 
 const StudentDashboard: React.FC = () => {
-  const [selectedCharacter, setSelectedCharacter] = useState<'Teo' | 'Josefina' | null>(null);
+  const [selectedCharacter, setSelectedCharacter] = useState<'Teo' | 'Jojo' | null>(null);
 
   if (selectedCharacter) {
     return (
@@ -27,7 +27,7 @@ const StudentDashboard: React.FC = () => {
             Bienvenido al Chat Educativo
           </h1>
           <p className="text-lg text-[#37474F] max-w-2xl mx-auto">
-            Conversa con Teo y Josefina para practicar y mejorar tus habilidades de comunicación. 
+            Conversa con Teo y Jojo para practicar y mejorar tus habilidades de comunicación. 
             ¡Cada conversación es una oportunidad de aprender!
           </p>
         </div>
@@ -52,12 +52,12 @@ const StudentDashboard: React.FC = () => {
             />
 
             <CharacterCard
-              name="Josefina"
+              name="Jojo"
               age={15}
               grade="1º Medio"
-              description="Josefina tiene dificultades intelectuales leves y es tímida. Aprende mejor con ejemplos concretos y disfruta de actividades relacionadas con sus intereses."
+              description="Jojo tiene dificultades intelectuales leves y es tímida. Aprende mejor con ejemplos concretos y disfruta de actividades relacionadas con sus intereses."
               interests={['Música', 'Fútbol', 'Ejemplos prácticos']}
-              onClick={() => setSelectedCharacter('Josefina')}
+              onClick={() => setSelectedCharacter('Jojo')}
             />
           </div>
         </div>
@@ -77,7 +77,7 @@ const StudentDashboard: React.FC = () => {
               </ul>
             </div>
             <div className="space-y-2">
-              <p><strong>Con Josefina:</strong></p>
+              <p><strong>Con Jojo:</strong></p>
               <ul className="space-y-1 pl-4">
                 <li>• Conecta con música y deportes</li>
                 <li>• Usa ejemplos de la vida real</li>
