@@ -19,12 +19,13 @@ COPY ./requirements.txt .
 RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 # Copiar el resto del código de la aplicación
-COPY ./app ./app
+COPY . .
 
 # Exponer el puerto en el que corre la aplicación
 EXPOSE 8000
 
-# Comando para iniciar la aplicación con Uvicorn
+# El host 0.0.0.0 es crucial para que sea accesible desde fuera del contenedor
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 # El host 0.0.0.0 es crucial para que sea accesible desde fuera del contenedor
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 

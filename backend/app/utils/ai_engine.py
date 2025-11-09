@@ -1,9 +1,52 @@
 import os
+import json
 import google.generativeai as genai
 
 # Configura la API key desde la variable de entorno.
 # La librería busca automáticamente la variable de entorno GOOGLE_API_KEY.
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+
+async def generate_gemini_response(prompt, conversation):
+    """Genera una respuesta usando el modelo Gemini para evaluar una conversación."""
+    try:
+        model = genai.GenerativeModel(model_name="gemini-2.5-flash")
+        
+        # Combina el prompt con la conversación
+        prompt_completo = prompt + "\n\n" + json.dumps(conversation, indent=2)
+        
+        # Genera la respuesta
+        response = model.generate_content(prompt_completo)
+
+        # Normalizar texto de la respuesta
+        text = (response.text or "").strip()
+
+        # Intentar parsear JSON directamente
+        try:
+            return json.loads(text)
+        except Exception:
+            # Intentar extraer un bloque JSON si el modelo agregó texto adicional
+            # Buscamos primero un objeto JSON {...} y luego un array [...]
+            import re
+            obj_match = re.search(r"\{.*\}", text, re.DOTALL)
+            arr_match = re.search(r"\[.*\]", text, re.DOTALL)
+            candidate = None
+            if obj_match:
+                candidate = obj_match.group(0)
+            elif arr_match:
+                candidate = arr_match.group(0)
+
+            if candidate:
+                try:
+                    return json.loads(candidate)
+                except Exception as e:
+                    print(f"[AI_ENGINE] Error parsing extracted JSON candidate: {e}")
+
+        # Si no pudimos parsear, logueamos la respuesta cruda y lanzamos excepción
+        print(f"[AI_ENGINE] Error al generar evaluación: respuesta no es JSON válido. Respuesta cruda:\n{text}")
+        raise Exception(f"AI response not valid JSON: {text[:1000]}")
+    except Exception as e:
+        print(f"[AI_ENGINE] Error al generar evaluación: {e}")
+        raise e
 
 def iniciar_chat_con_historial(prompt_sistema, historial):
     """Inicia una sesión de chat con un historial preexistente."""

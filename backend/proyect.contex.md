@@ -294,3 +294,80 @@ Menciona su entorno con naturalidad, pero sin sobreexplicar (“Rufino duerme co
 * **Socioemocional:** Tímida, muy sociable en grupos pequeños, pero **teme las burlas** y la exclusión. Busca aceptación. Tiende a la **evasión** (sala PIE/biblioteca) ante la frustración.
 * **TVA (Transición a la Vida Adulta):** El foco es desarrollar **habilidades comunitarias** (manejo de dinero, rutas seguras) e **indagación vocacional** (talleres, oficios).
 * **Apoyos:** Vive con su madre, hermana y abuela (Estela), quien es su **principal apoyo funcional y afectivo**. Recibe apoyo de PIE.
+
+## 📘 Generación del Reporte Final de Interacción con Teo
+
+Al finalizar cada sesión del chat con Teo, el sistema debe generar un **reporte PDF automático** que combine:
+
+1. **La conversación completa** (docente ↔ Teo).  
+2. **La tabla de evaluación psicopedagógica**, basada en los criterios de éxito definidos a continuación.  
+3. **Una conclusión final del desempeño**, donde se detalla si el participante aprueba o no la simulación y por qué.
+
+---
+
+### 🧩 Formato del Reporte PDF
+
+#### 🗂️ Portada
+REPORTE DE INTERACCIÓN CON TEO
+Fecha: [fecha actual]
+Docente participante: [nombre del evaluado o “Simulador”]
+Personaje: Teo (9 años, 3º Básico)
+
+shell
+Copiar código
+
+#### 💬 Conversación
+Se listan los mensajes con el siguiente formato:
+Docente: [mensaje]
+Teo: [respuesta]
+
+### 📊 Evaluación de la Interacción con Teo
+
+El desempeño del docente (simulador) será evaluado en una escala de **0 a 11** y categorizado en los rangos:
+- **Aceptable:** 3–4 criterios cumplidos  
+- **Competente:** 5–7 criterios cumplidos  
+- **Exitosa:** 8 o más criterios cumplidos  
+
+| Criterio de Éxito | Descripción de la Conducta Docente (Observada en el Reporte) | Cumplimiento | Análisis de la Interacción |
+|--------------------|--------------------------------------------------------------|---------------|----------------------------|
+| **1. Uso de Andamiaje Funcional/Ecológico** | El docente intenta vincular el tema de la sesión con una situación real (ej. compras, transporte, etc.). | SÍ / NO | Explica si el docente aplicó o no ejemplos funcionales al contexto real del estudiante. |
+| **2. Secuenciación Clara de Pasos** | El docente descompone la actividad en pasos visuales simples y evita instrucciones complejas. | SÍ / NO | Evalúa si se presentó una instrucción estructurada y paso a paso. |
+| **3. Adaptación de Textos y Enunciados** | El docente simplifica el lenguaje y evita preguntas abstractas. | SÍ / NO | Evalúa si el lenguaje fue accesible y concreto para Teo. |
+| **4. Uso de la Memoria para lo Concreto** | El docente utiliza conocimientos previos o intereses del estudiante (dibujo, lógica, perro, abuela). | SÍ / NO | Analiza si el docente logró conectar los intereses personales de Teo con el aprendizaje. |
+| **5. Prevención de Burlas y Miedo** | El docente aplica un refuerzo positivo genuino y enfatiza que es un espacio seguro. | SÍ / NO | Indica si el tono del docente fortaleció la seguridad emocional de Teo. |
+| **6. Validación de la Vulnerabilidad** | El docente valida las emociones (ej. frustración, inseguridad) antes de redirigir la tarea. | SÍ / NO | Evalúa si el docente reconoció la emoción de Teo antes de guiarlo. |
+| **7. Fomento de la Autonomía Social** | El docente promueve que Teo exprese lo que necesita o decida cómo continuar. | SÍ / NO | Indica si se fomentó la autorregulación o la petición de ayuda. |
+| **8. Vinculación Curricular Ecológica** | El docente aplica el ejemplo funcional a los contenidos curriculares de Lenguaje o Matemática. | SÍ / NO | Evalúa si el docente logró conectar la conversación con los contenidos escolares. |
+| **9. Indagación Vocacional Temprana** | El docente vincula las habilidades de Teo (dibujo, lógica) con proyecciones futuras. | SÍ / NO | Analiza si se fomentó la autopercepción positiva del talento personal. |
+| **10. Refuerzo de la Autonomía Comunitaria** | El docente plantea simulaciones prácticas (comprar, resolver un problema, cuidar a Rufino). | SÍ / NO | Evalúa si se promovieron escenarios de vida cotidiana funcionales. |
+| **11. Fomento de la Inclusión Curricular** | El docente propone situaciones donde Teo pueda participar en grupo o con apoyo. | SÍ / NO | Evalúa si el docente integró estrategias para fomentar la participación de Teo con sus pares. |
+
+---
+Las columnas tiene que ser:
+1. Criterios de exito
+2. Descripción de la Conducta Docente (Observada en el Reporte)
+3. Cumplimiento
+4. Análisis de la Interacción
+5. Porque si se cumplio y no.
+
+### 📈 Conclusión de la Evaluación del Desempeño
+
+| Puntuación Total | Rango de Desempeño | Comentarios de Retroalimentación |
+|------------------|--------------------|----------------------------------|
+| X de 11 criterios cumplidos | (Aceptable / Competente / Exitosa) | Texto generado por la IA con el análisis global del desempeño del docente. Debe incluir fortalezas, debilidades y sugerencias pedagógicas. |
+
+---
+
+### 🧠 Instrucciones para la IA evaluadora (Gemini)
+- Analizar **solo la conducta del docente**, no la de Teo.  
+- Completar la tabla con base en la conversación y los criterios predefinidos.  
+- Usar formato Markdown limpio y estructurado.  
+- Mantener un tono profesional, pedagógico y objetivo.  
+- Si hay ambigüedad o falta de evidencia, marcar “NO” y justificar.  
+
+---
+
+💡 **Nota:** Este formato debe conservarse al generar el PDF final.  
+El bloque de conversación va arriba, y esta tabla con la conclusión se añade debajo, en la misma página o en una nueva sección titulada:  
+**“Evaluación del Desempeño Docente en la Interacción con Teo”.**
+
