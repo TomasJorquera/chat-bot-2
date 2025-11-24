@@ -11,7 +11,7 @@ services:
       # Monta el código local para desarrollo con live-reload
       - ./backend:/app
     env_file:
-      - ./backend/c-Users-jojor-OneDrive-Escritorio-chatbot2-backend-.env
+      - ./backend/.env
     environment:
       # Esta URL apunta al servicio 'db' de Docker Compose con las credenciales correctas
       - DATABASE_URL=postgresql://ingrequerimientos:ingrequerimientos@db:5432/chatbot_db
