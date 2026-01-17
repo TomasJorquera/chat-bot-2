@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userType = determineUserType(email);
       const newUser: User = {
         id: Date.now().toString(),
-        name: 'Usuario',
+        name: 'User',
         lastName: 'Demo',
         email,
         type: userType,

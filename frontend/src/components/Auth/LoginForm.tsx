@@ -22,7 +22,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
     setError('');
 
     if (!validateEmail(email)) {
-      setError('El correo debe terminar en @correo.uss.cl o @docente.uss.cl');
+      setError('Email must end with @correo.uss.cl or @docente.uss.cl');
       return;
     }
 
@@ -30,21 +30,21 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
     if (success) {
       onClose();
     } else {
-      setError('Credenciales incorrectas');
+      setError('Incorrect credentials');
     }
   };
 
   return (
     <div className="w-full max-w-md">
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-[#0D47A1] mb-2">Iniciar Sesión</h2>
-        <p className="text-[#37474F]">Accede a tu cuenta educativa</p>
+        <h2 className="text-2xl font-bold text-[#0D47A1] mb-2">Sign In</h2>
+        <p className="text-[#37474F]">Access your account</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-[#0D47A1] mb-2">
-            Correo electrónico
+            Email
           </label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#37474F]" />
@@ -53,7 +53,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none transition-all"
-              placeholder="usuario@correo.uss.cl"
+              placeholder="user@correo.uss.cl"
               required
             />
           </div>
@@ -61,7 +61,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
 
         <div>
           <label className="block text-sm font-medium text-[#0D47A1] mb-2">
-            Contraseña
+            Password
           </label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#37474F]" />
@@ -70,7 +70,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none transition-all"
-              placeholder="Tu contraseña"
+              placeholder="Your password"
               required
             />
           </div>
@@ -89,16 +89,16 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
           className="w-full bg-[#1E88E5] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors"
         >
           <LogIn className="w-5 h-5" />
-          <span>{loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}</span>
+          <span>{loading ? 'Signing in...' : 'Sign In'}</span>
         </button>
 
         <div className="text-center">
-          <button
+            <button
             type="button"
             onClick={onSwitchToRegister}
             className="text-[#1E88E5] hover:text-blue-700 text-sm font-medium transition-colors"
           >
-            ¿No tienes cuenta? Regístrate aquí
+            Don't have an account? Sign up here
           </button>
         </div>
       </form>

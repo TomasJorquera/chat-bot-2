@@ -18,12 +18,12 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
   const handleDownload = (conversationId: string) => {
     const conversation = mockConversations.find(c => c.id === conversationId);
     if (conversation) {
-      const data = `Conversación con ${conversation.character}\nFecha: ${conversation.date}\nPuntuación: ${conversation.score}/100\n\n[Contenido de la conversación...]`;
+      const data = `Conversation with ${conversation.character}\nDate: ${conversation.date}\nScore: ${conversation.score}/100\n\n[Conversation contents...]`;
       const blob = new Blob([data], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `conversacion-${conversation.character}-${conversation.date}.txt`;
+      a.download = `conversation-${conversation.character}-${conversation.date}.txt`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -36,7 +36,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
       <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-[#0D47A1]">Perfil de Usuario</h2>
+            <h2 className="text-2xl font-bold text-[#0D47A1]">User Profile</h2>
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -61,7 +61,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
                     <span className="text-[#37474F]">{user.email}</span>
                   </div>
                   <span className="inline-block mt-2 px-3 py-1 bg-blue-100 text-[#1E88E5] rounded-full text-sm font-medium">
-                    {user.type === 'teacher' ? 'Docente' : 'Alumno'}
+                    {user.type === 'teacher' ? 'Teacher' : 'Student'}
                   </span>
                 </div>
               </div>
@@ -69,9 +69,9 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
 
             {/* Conversation History */}
             <div>
-              <h4 className="text-lg font-semibold text-[#0D47A1] mb-4 flex items-center space-x-2">
+                <h4 className="text-lg font-semibold text-[#0D47A1] mb-4 flex items-center space-x-2">
                 <MessageSquare className="w-5 h-5" />
-                <span>Historial de Conversaciones</span>
+                <span>Conversation History</span>
               </h4>
               
               <div className="space-y-3">
@@ -90,13 +90,13 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
                           </div>
                           <div>
                             <h5 className="font-medium text-[#0D47A1]">
-                              Conversación con {conversation.character}
+                              Conversation with {conversation.character}
                             </h5>
                             <p className="text-sm text-[#37474F]">{conversation.date}</p>
                           </div>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className="text-sm text-[#37474F]">Puntuación:</span>
+                          <span className="text-sm text-[#37474F]">Score:</span>
                           <span className={`font-bold ${
                             conversation.score >= 80 ? 'text-[#43A047]' : 
                             conversation.score >= 60 ? 'text-orange-500' : 'text-[#E53935]'
@@ -108,7 +108,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
                       <button
                         onClick={() => handleDownload(conversation.id)}
                         className="p-2 text-[#1E88E5] hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Descargar conversación"
+                        title="Download conversation"
                       >
                         <Download className="w-5 h-5" />
                       </button>
@@ -120,8 +120,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ onClose }) => {
               {mockConversations.length === 0 && (
                 <div className="text-center py-8 text-[#37474F]">
                   <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No tienes conversaciones aún</p>
-                  <p className="text-sm">¡Comienza a chatear con Teo y Jojo!</p>
+                  <p>You have no conversations yet</p>
+                  <p className="text-sm">Start chatting with Teo and Jojo!</p>
                 </div>
               )}
             </div>

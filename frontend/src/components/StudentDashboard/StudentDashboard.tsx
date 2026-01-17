@@ -24,11 +24,10 @@ const StudentDashboard: React.FC = () => {
             <BookOpen className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-[#0D47A1] mb-4">
-            Bienvenido al Chat Educativo
+            Welcome to Educational Chat
           </h1>
           <p className="text-lg text-[#37474F] max-w-2xl mx-auto">
-            Conversa con Teo y Jojo para practicar y mejorar tus habilidades de comunicación. 
-            ¡Cada conversación es una oportunidad de aprender!
+            Chat with Teo and Jojo to practice and improve your communication skills. Each conversation is an opportunity to learn.
           </p>
         </div>
 
@@ -37,7 +36,7 @@ const StudentDashboard: React.FC = () => {
           <div className="flex items-center justify-center space-x-3 mb-8">
             <Users className="w-6 h-6 text-[#1E88E5]" />
             <h2 className="text-2xl font-bold text-[#0D47A1]">
-              Elige con quién quieres conversar
+              Choose who you want to chat with
             </h2>
           </div>
 
@@ -45,18 +44,18 @@ const StudentDashboard: React.FC = () => {
             <CharacterCard
               name="Teo"
               age={9}
-              grade="4º Básico"
-              description="Teo tiene dificultades en lectura y escritura, y a veces evita las tareas de lenguaje. Responde mejor cuando recibe apoyo visual y ejemplos concretos."
-              interests={['Dibujos', 'Colores', 'Juegos visuales']}
+              grade="4th Grade"
+              description="Teo has difficulties with reading and writing and may avoid language tasks. He responds better to visual support and concrete examples."
+              interests={['Drawings', 'Colors', 'Visual games']}
               onClick={() => setSelectedCharacter('Teo')}
             />
 
             <CharacterCard
               name="Jojo"
               age={15}
-              grade="1º Medio"
-              description="Jojo tiene dificultades intelectuales leves y es tímida. Aprende mejor con ejemplos concretos y disfruta de actividades relacionadas con sus intereses."
-              interests={['Música', 'Fútbol', 'Ejemplos prácticos']}
+              grade="10th Grade"
+              description="Jojo has mild intellectual challenges and is shy. She learns better with concrete examples and enjoys activities related to her interests."
+              interests={['Music', 'Soccer', 'Practical examples']}
               onClick={() => setSelectedCharacter('Jojo')}
             />
           </div>
@@ -65,23 +64,23 @@ const StudentDashboard: React.FC = () => {
         {/* Tips Section */}
         <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 max-w-4xl mx-auto border border-blue-200">
           <h3 className="text-lg font-semibold text-[#0D47A1] mb-4">
-            💡 Consejos para una mejor conversación
+            💡 Tips for a better conversation
           </h3>
           <div className="grid md:grid-cols-2 gap-4 text-sm text-[#37474F]">
             <div className="space-y-2">
-              <p><strong>Con Teo:</strong></p>
+              <p><strong>For Teo:</strong></p>
               <ul className="space-y-1 pl-4">
-                <li>• Usa ejemplos visuales y concretos</li>
-                <li>• Sé paciente con las respuestas</li>
-                <li>• Menciona colores y formas</li>
+                <li>• Use visual, concrete examples</li>
+                <li>• Be patient with responses</li>
+                <li>• Mention colors and shapes</li>
               </ul>
             </div>
             <div className="space-y-2">
-              <p><strong>Con Jojo:</strong></p>
+              <p><strong>For Jojo:</strong></p>
               <ul className="space-y-1 pl-4">
-                <li>• Conecta con música y deportes</li>
-                <li>• Usa ejemplos de la vida real</li>
-                <li>• Dale tiempo para procesar</li>
+                <li>• Connect with music and sports</li>
+                <li>• Use real-life examples</li>
+                <li>• Give time to process</li>
               </ul>
             </div>
           </div>

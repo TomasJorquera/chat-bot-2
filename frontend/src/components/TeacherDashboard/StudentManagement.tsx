@@ -71,12 +71,12 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ onBack }) => {
   const handleDownloadReport = (reportId: string) => {
     const report = mockReports.find(r => r.id === reportId);
     if (report) {
-      const data = `Reporte de Conversación\nFecha: ${report.date}\nPersonaje: ${report.character}\nPuntuación: ${report.score}/100\nDuración: ${report.duration}\n\n[Contenido detallado del reporte...]`;
+      const data = `Conversation Report\nDate: ${report.date}\nCharacter: ${report.character}\nScore: ${report.score}/100\nDuration: ${report.duration}\n\n[Detailed report contents...]`;
       const blob = new Blob([data], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `reporte-${report.character}-${report.date}.txt`;
+      a.download = `report-${report.character}-${report.date}.txt`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -104,7 +104,7 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ onBack }) => {
           <div className="grid lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2">
               <div className="bg-white/90 backdrop-blur-sm rounded-xl p-6 border border-blue-200">
-                <h3 className="text-xl font-semibold text-[#0D47A1] mb-6">Historial de Reportes</h3>
+                <h3 className="text-xl font-semibold text-[#0D47A1] mb-6">Reports History</h3>
                 
                 <div className="space-y-4">
                   {mockReports.map((report) => (
@@ -122,7 +122,7 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ onBack }) => {
                             </div>
                             <div>
                               <h4 className="font-medium text-[#0D47A1]">
-                                Conversación con {report.character}
+                                Conversation with {report.character}
                               </h4>
                               <p className="text-sm text-[#37474F]">
                                 {report.date} • {report.duration}
@@ -130,8 +130,8 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ onBack }) => {
                             </div>
                           </div>
                           <div className="flex items-center space-x-4">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-sm text-[#37474F]">Puntuación:</span>
+                              <div className="flex items-center space-x-2">
+                              <span className="text-sm text-[#37474F]">Score:</span>
                               <span className={`font-bold ${getScoreColor(report.score)}`}>
                                 {report.score}/100
                               </span>
@@ -141,7 +141,7 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ onBack }) => {
                         <button
                           onClick={() => handleDownloadReport(report.id)}
                           className="p-2 text-[#1E88E5] hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Descargar reporte"
+                          title="Download report"
                         >
                           <Download className="w-5 h-5" />
                         </button>
@@ -233,7 +233,7 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ onBack }) => {
             <ArrowLeft className="w-6 h-6 text-[#1E88E5]" />
           </button>
           <h1 className="text-3xl font-bold text-[#0D47A1]">
-            Administrar Estudiantes
+            Manage Students
           </h1>
         </div>
 
@@ -242,7 +242,7 @@ const StudentManagement: React.FC<StudentManagementProps> = ({ onBack }) => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#37474F]" />
             <input
               type="text"
-              placeholder="Buscar estudiante..."
+              placeholder="Search students..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none transition-all"
