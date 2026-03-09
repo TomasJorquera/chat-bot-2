@@ -22,16 +22,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
     Teo: {
       emoji: '🧒',
       age: 9,
-      grade: '4th Grade',
-      personality: 'Shy but curious; prefers visual examples',
-      greeting: 'Hi, I am Teo. I sometimes struggle with reading, but I like learning with drawings and colors. Can you help me?'
+      grade: '4º Básico',
+      personality: 'Tímido pero curioso; prefiere ejemplos visuales',
+      greeting: 'Hola, soy Teo. A veces me cuesta leer, pero me gusta aprender con dibujos y colores. ¿Puedes ayudarme?'
     },
     Jojo: {
       emoji: '👧',
       age: 15,
-      grade: '10th Grade',
-      personality: 'Shy; learns better with concrete examples',
-      greeting: 'Hi, I am Jojo. I like music and soccer. Sometimes I need things explained with examples. Can we talk?'
+      grade: '10º Medio',
+      personality: 'Tímida; aprende mejor con ejemplos concretos',
+      greeting: 'Hola, soy Jojo. Me gusta la música y el fútbol. A veces necesito que me expliquen con ejemplos. ¿Podemos conversar?'
     }
   };
 
@@ -111,10 +111,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
   setMessages((prev: Message[]) => [...prev, characterResponse]);
     } catch (error) {
       console.error("Error fetching character response:", error);
-      let errorMessage = 'Sorry, I am not able to talk right now.';
+      let errorMessage = 'Lo siento, no puedo conversar en este momento.';
       if (error instanceof Error) {
         // Include error detail for debugging
-        errorMessage = `Connection error: ${error.message}. Please check that the server is running.`;
+        errorMessage = `Error de conexión: ${error.message}. Comprueba que el servidor esté en funcionamiento.`;
       }
       const errorResponse: Message = {
         id: Date.now().toString(),
@@ -176,7 +176,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
 
     } catch (error) {
       console.error("Error al reiniciar la conversación:", error);
-      alert("Could not restart the conversation. Please try again.");
+      alert("No se pudo reiniciar la conversación. Inténtalo de nuevo.");
     }
   };
 
@@ -185,7 +185,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
     const conversationToSave = messages.filter((msg: Message) => msg.content !== characterInfo[character].greeting);
 
     if (conversationToSave.length === 0) {
-      alert("There is no conversation to generate a report.");
+      alert("No hay conversación para generar un informe.");
       return;
     }
 
@@ -252,7 +252,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
         // Create conclusion based on total_score/performance_range
         const total = evalData.total_score ?? evaluationArray.filter(e => e.cumplimiento === 'SÍ').length;
         const range = evalData.performance_range ?? (total >= 8 ? 'Successful' : total >=5 ? 'Competent' : total >=3 ? 'Acceptable' : 'Below minimum');
-        conclusionArray = [ { title: 'Total Score', text: `${total} of 11 criteria met - Performance: ${range}` } ];
+        conclusionArray = [ { title: 'Puntaje total', text: `${total} de 11 criterios cumplidos - Desempeño: ${range}` } ];
         if (evalData.conclusion && typeof evalData.conclusion === 'string') {
           conclusionArray.push({ title: 'Conclusión', text: evalData.conclusion });
         }
@@ -265,27 +265,27 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
       setShowPreview(true);
       return;
     } catch (err) {
-      console.warn('Could not obtain evaluation from backend; using example data. Detail:', err);
+      console.warn('No se pudo obtener la evaluación del backend; usando datos de ejemplo. Detalle:', err);
       setEvaluationError(err instanceof Error ? err.message : String(err));
 
       // Fallback: mantener los datos de ejemplo previos para que la UI funcione
       const exampleEvaluation = [
-        { criterio: '1. Use of Functional/Ecological Scaffolding', descripcion: 'Teacher links the session topic to a real-life situation.', cumplimiento: 'SÍ' as const, analisis: 'Teacher appropriately relates concepts to everyday examples.', justificacion: 'Observed in messages that contextualize learning with daily situations.' },
-        { criterio: '2. Clear Step Sequencing', descripcion: 'Teacher breaks down the activity into simple visual steps and avoids complex instructions.', cumplimiento: 'SÍ' as const, analisis: 'Instructions are presented clearly and in a structured way.', justificacion: 'Messages show a logical, progressive sequence of instructions.' },
-        { criterio: '3. Adaptation of Texts and Prompts', descripcion: 'Teacher simplifies language and avoids abstract questions.', cumplimiento: 'NO' as const, analisis: 'Some prompts could be more concrete.', justificacion: 'Some messages use abstract terms that could be simplified.' },
-        { criterio: '4. Use of Concrete Memory', descripcion: 'Teacher uses prior knowledge or student interests (drawing, logic, pet, grandmother).', cumplimiento: 'SÍ' as const, analisis: 'Teacher connects student interests to learning.', justificacion: 'References to the student’s interests (drawing, pet) help facilitate learning.' },
-        { criterio: '5. Prevention of Teasing and Fear', descripcion: 'Teacher applies genuine positive reinforcement and emphasizes a safe space.', cumplimiento: 'SÍ' as const, analisis: 'Tone strengthened the student’s emotional safety.', justificacion: 'Maintains a positive and validating tone throughout the interaction.' },
-        { criterio: '6. Validation of Vulnerability', descripcion: 'Teacher validates emotions (e.g., frustration) before redirecting the task.', cumplimiento: 'NO' as const, analisis: 'Teacher did not explicitly recognize emotions at some difficulty points.', justificacion: 'No clear emotional validation observed during moments of difficulty.' },
-        { criterio: '7. Promotion of Social Autonomy', descripcion: 'Teacher encourages the student to express needs or decide how to proceed.', cumplimiento: 'SÍ' as const, analisis: 'Encouraged self-regulation or asking for help.', justificacion: 'Offers options and encourages decision-making about the learning process.' },
-        { criterio: '8. Curricular Linkage', descripcion: 'Teacher applies functional examples to curricular content (language or math).', cumplimiento: 'NO' as const, analisis: 'Examples did not explicitly link to curricular objectives.', justificacion: 'Used examples are not clearly connected to school objectives.' },
-        { criterio: '9. Early Vocational Inquiry', descripcion: 'Teacher links student skills (drawing, logic) to future projections.', cumplimiento: 'SÍ' as const, analisis: 'Fosters a positive perception of personal talent.', justificacion: 'Relates artistic skills to possible future developments.' },
-        { criterio: '10. Reinforcement of Community Autonomy', descripcion: 'Teacher proposes practical simulations (shopping, solving a problem, caring for Rufino).', cumplimiento: 'NO' as const, analisis: 'Did not include practical everyday scenarios in examples.', justificacion: 'No practical daily-life situations were used.' },
-        { criterio: '11. Promotion of Curricular Inclusion', descripcion: 'Teacher proposes situations where the student can participate in groups or with support.', cumplimiento: 'SÍ' as const, analisis: 'Integrated strategies to foster peer participation.', justificacion: 'Suggests collaborative activities and opportunities for group participation.' }
+        { criterio: '1. Andamiaje funcional/ecológico', descripcion: 'El docente relaciona el tema de la sesión con una situación de la vida real.', cumplimiento: 'SÍ' as const, analisis: 'Relaciona conceptos con ejemplos cotidianos.', justificacion: 'Observado en mensajes que contextualizan el aprendizaje con situaciones diarias.' },
+        { criterio: '2. Secuenciación clara de pasos', descripcion: 'El docente descompone la actividad en pasos visuales y evita instrucciones complejas.', cumplimiento: 'SÍ' as const, analisis: 'Las instrucciones se presentan de forma clara y ordenada.', justificacion: 'Los mensajes muestran una secuencia lógica y progresiva.' },
+        { criterio: '3. Adaptación de textos y consignas', descripcion: 'El docente simplifica el lenguaje y evita preguntas abstractas.', cumplimiento: 'NO' as const, analisis: 'Algunas consignas podrían ser más concretas.', justificacion: 'Algunos mensajes usan términos abstractos que podrían simplificarse.' },
+        { criterio: '4. Uso de memoria concreta', descripcion: 'El docente usa conocimientos previos o intereses del estudiante (dibujo, mascota).', cumplimiento: 'SÍ' as const, analisis: 'Conecta los intereses del estudiante con el aprendizaje.', justificacion: 'Referencias a los intereses del alumno ayudan a facilitar el aprendizaje.' },
+        { criterio: '5. Prevención de burlas y miedo', descripcion: 'El docente aplica refuerzo positivo genuino y enfatiza un espacio seguro.', cumplimiento: 'SÍ' as const, analisis: 'El tono refuerza la seguridad emocional del estudiante.', justificacion: 'Mantiene un tono positivo y validante durante la interacción.' },
+        { criterio: '6. Validación de la vulnerabilidad', descripcion: 'El docente valida emociones (p. ej., frustración) antes de redirigir la tarea.', cumplimiento: 'NO' as const, analisis: 'No se reconocieron explícitamente emociones en algunos puntos de dificultad.', justificacion: 'No se observó validación emocional clara en momentos de dificultad.' },
+        { criterio: '7. Promoción de autonomía social', descripcion: 'El docente anima al estudiante a expresar necesidades o decidir cómo avanzar.', cumplimiento: 'SÍ' as const, analisis: 'Fomenta la autorregulación y la petición de ayuda.', justificacion: 'Ofrece opciones e incentiva la toma de decisiones.' },
+        { criterio: '8. Vinculación curricular', descripcion: 'El docente aplica ejemplos funcionales al contenido curricular (lenguaje o matemáticas).', cumplimiento: 'NO' as const, analisis: 'Los ejemplos no vinculan claramente con objetivos curriculares.', justificacion: 'Los ejemplos usados no se conectan explícitamente con objetivos escolares.' },
+        { criterio: '9. Indagación vocacional temprana', descripcion: 'El docente relaciona habilidades del estudiante (dibujo, lógica) con proyecciones futuras.', cumplimiento: 'SÍ' as const, analisis: 'Fomenta una percepción positiva del talento personal.', justificacion: 'Relaciona habilidades artísticas con posibles desarrollos futuros.' },
+        { criterio: '10. Refuerzo de autonomía comunitaria', descripcion: 'El docente propone simulaciones prácticas (compras, resolución de problemas).', cumplimiento: 'NO' as const, analisis: 'No incluyó escenarios prácticos de la vida diaria en los ejemplos.', justificacion: 'No se emplearon situaciones prácticas cotidianas.' },
+        { criterio: '11. Promoción de inclusión curricular', descripcion: 'El docente propone situaciones para que el estudiante participe en grupo o con apoyo.', cumplimiento: 'SÍ' as const, analisis: 'Integra estrategias para fomentar la participación entre pares.', justificacion: 'Sugiere actividades colaborativas y oportunidades de participación.' }
       ];
 
       const criteriosCumplidos = exampleEvaluation.filter(e => e.cumplimiento === 'SÍ').length;
-      const rangoDesempeno = criteriosCumplidos >= 8 ? 'Successful' : criteriosCumplidos >= 5 ? 'Competent' : criteriosCumplidos >= 3 ? 'Acceptable' : 'Below minimum';
-      const exampleConclusion = [ { title: 'Total Score', text: `${criteriosCumplidos} of 11 criteria met - Performance: ${rangoDesempeno}` }, { title: 'Strengths', text: 'Teacher demonstrates skill creating a safe, validating environment and connecting examples to student interests.' }, { title: 'Areas for Improvement', text: 'Opportunities exist to provide more explicit emotional validation and stronger curricular connections.' }, { title: 'Pedagogical Suggestions', text: '1. Include more moments of emotional validation before redirecting tasks.\n2. Increase the use of practical examples linked to daily life and curriculum.' } ];
+      const rangoDesempeno = criteriosCumplidos >= 8 ? 'Excelente' : criteriosCumplidos >= 5 ? 'Competente' : criteriosCumplidos >= 3 ? 'Aceptable' : 'Por debajo del mínimo';
+      const exampleConclusion = [ { title: 'Puntaje total', text: `${criteriosCumplidos} de 11 criterios cumplidos - Desempeño: ${rangoDesempeno}` }, { title: 'Fortalezas', text: 'El docente demuestra habilidad para crear un entorno seguro y conectar ejemplos con los intereses del estudiante.' }, { title: 'Áreas de mejora', text: 'Existen oportunidades para brindar validación emocional más explícita y enlaces curriculares más sólidos.' }, { title: 'Sugerencias pedagógicas', text: '1. Incluir más momentos de validación emocional antes de redirigir tareas.\n2. Aumentar el uso de ejemplos prácticos vinculados a la vida diaria y al currículo.' } ];
 
       setPreviewData({ evaluation: exampleEvaluation, conclusion: exampleConclusion, conversation: conversationToSave });
       setShowPreview(true);
@@ -339,10 +339,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
 
               {evaluationError && (
                 <div className="max-w-4xl mx-auto mt-3 px-4">
-                  <div className="bg-yellow-100 border-l-4 border-yellow-400 p-3 text-sm text-yellow-800 rounded">
-                    <strong>Note:</strong> The automatic evaluation from the backend could not be retrieved. A sample is shown.
-                    <div className="mt-1 text-xs text-yellow-700">Detail: {evaluationError}</div>
-                  </div>
+                    <div className="bg-yellow-100 border-l-4 border-yellow-400 p-3 text-sm text-yellow-800 rounded">
+                      <strong>Nota:</strong> No se pudo obtener la evaluación automática desde el backend. Se muestra un ejemplo.
+                      <div className="mt-1 text-xs text-yellow-700">Detalle: {evaluationError}</div>
+                    </div>
                 </div>
               )}
           </div>
@@ -352,12 +352,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
               onClick={handleFinishAndSave}
               disabled={isEvaluating}
               className={`flex items-center space-x-2 px-4 py-2 ${isEvaluating ? 'bg-gray-400 cursor-wait' : 'bg-[#43A047] hover:bg-green-600'} text-white rounded-lg transition-colors`}
-              title="Finish and save the conversation as PDF"
+              title="Finalizar y guardar la conversación como PDF"
             >
                 <FileText className="w-5 h-5" />
-                <span>{isEvaluating ? 'Generating...' : 'Finish and Save'}</span>
+                <span>{isEvaluating ? 'Generando...' : 'Finalizar y guardar'}</span>
             </button>
-            <button onClick={handleRestart} className="p-2 text-gray-500 hover:bg-gray-200 rounded-lg" title="Restart conversation (clears current history)">
+            <button onClick={handleRestart} className="p-2 text-gray-500 hover:bg-gray-200 rounded-lg" title="Reiniciar conversación (borra el historial actual)">
               <RotateCcw className="w-5 h-5" />
             </button>
           </div>
@@ -395,7 +395,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
                 <div className="flex items-center space-x-2">
                   <Loader className="w-4 h-4 animate-spin text-[#1E88E5]" />
                   <span className="text-[#37474F] text-sm">
-                    {character} is typing...
+                    {character} está escribiendo...
                   </span>
                 </div>
               </div>
@@ -418,7 +418,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
                 value={inputValue}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder={`Type a message to ${character}...`}
+                placeholder={`Escribe un mensaje para ${character}...`}
                 className="w-full px-4 py-3 border border-blue-200 rounded-2xl focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none resize-none transition-all"
                 disabled={isTyping}
               />

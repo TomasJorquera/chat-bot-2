@@ -26,7 +26,7 @@ const HomePage: React.FC = () => {
               <div className="w-10 h-10 bg-gradient-to-br from-[#1E88E5] to-[#42A5F5] rounded-lg flex items-center justify-center">
                 <MessageSquare className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-xl font-bold text-[#0D47A1]">Educational Chat</h1>
+              <h1 className="text-xl font-bold text-[#0D47A1]">Chat Educativo</h1>
             </div>
             
             <div className="flex items-center space-x-3">
@@ -35,14 +35,14 @@ const HomePage: React.FC = () => {
                 className="px-4 py-2 text-[#1E88E5] hover:bg-blue-50 rounded-lg font-medium transition-colors flex items-center space-x-2"
               >
                 <LogIn className="w-4 h-4" />
-                <span>Sign In</span>
+                <span>Iniciar sesión</span>
               </button>
               <button
                 onClick={handleShowRegister}
                 className="px-4 py-2 bg-[#1E88E5] hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center space-x-2"
               >
                 <UserPlus className="w-4 h-4" />
-                <span>Sign Up</span>
+                <span>Registrarse</span>
               </button>
             </div>
           </div>
@@ -58,15 +58,15 @@ const HomePage: React.FC = () => {
             </div>
             
             <h1 className="text-4xl md:text-6xl font-bold text-[#0D47A1] mb-6 leading-tight">
-              Welcome to the
+              Bienvenido a
               <br />
               <span className="bg-gradient-to-r from-[#1E88E5] to-[#42A5F5] bg-clip-text text-transparent">
-                Educational Chat
+                el Chat Educativo
               </span>
             </h1>
             
             <p className="text-xl md:text-2xl text-[#37474F] mb-12 max-w-3xl mx-auto leading-relaxed">
-              to chat with <strong className="text-[#1E88E5]">Teo</strong> and{' '}
+              para chatear con <strong className="text-[#1E88E5]">Teo</strong> y{' '}
               <strong className="text-[#1E88E5]">Jojo</strong>
             </p>
 
@@ -76,14 +76,14 @@ const HomePage: React.FC = () => {
                 className="px-8 py-4 bg-[#1E88E5] hover:bg-blue-700 text-white rounded-xl font-semibold text-lg transition-all hover:shadow-lg flex items-center space-x-3"
               >
                 <UserPlus className="w-6 h-6" />
-                <span>Get Started</span>
+                <span>Comenzar</span>
               </button>
               <button
                 onClick={handleShowLogin}
                 className="px-8 py-4 bg-white/80 backdrop-blur-sm hover:bg-white text-[#1E88E5] border-2 border-[#1E88E5] rounded-xl font-semibold text-lg transition-all hover:shadow-lg flex items-center space-x-3"
               >
                 <LogIn className="w-6 h-6" />
-                <span>Already have an account</span>
+                <span>¿Ya tienes una cuenta?</span>
               </button>
             </div>
           </div>
@@ -95,10 +95,10 @@ const HomePage: React.FC = () => {
                 <MessageSquare className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-lg font-semibold text-[#0D47A1] mb-2">
-                Interactive Conversation
+                Conversación interactiva
               </h3>
               <p className="text-[#37474F] text-sm">
-                Chat in real time with characters designed for different educational levels
+                Chatea en tiempo real con personajes diseñados para distintos niveles educativos
               </p>
             </div>
 
@@ -107,10 +107,10 @@ const HomePage: React.FC = () => {
                 <BookOpen className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-lg font-semibold text-[#0D47A1] mb-2">
-                Adaptive Learning
+                Aprendizaje adaptativo
               </h3>
               <p className="text-[#37474F] text-sm">
-                Each character adapts to different learning styles and needs
+                Cada personaje se adapta a diferentes estilos y necesidades de aprendizaje
               </p>
             </div>
 
@@ -119,10 +119,10 @@ const HomePage: React.FC = () => {
                 <Brain className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-lg font-semibold text-[#0D47A1] mb-2">
-                Intelligent Assessment
+                Evaluación inteligente
               </h3>
               <p className="text-[#37474F] text-sm">
-                Reporting system that evaluates student progress and comprehension
+                Sistema de informes que evalúa el progreso y la comprensión del estudiante
               </p>
             </div>
 
@@ -131,10 +131,10 @@ const HomePage: React.FC = () => {
                 <Users className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-lg font-semibold text-[#0D47A1] mb-2">
-                Education Management
+                Gestión educativa
               </h3>
               <p className="text-[#37474F] text-sm">
-                Teachers can monitor progress and download detailed reports
+                Los docentes pueden monitorear el progreso y descargar informes detallados
               </p>
             </div>
           </div>
@@ -142,7 +142,7 @@ const HomePage: React.FC = () => {
           {/* Characters Preview */}
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-[#0D47A1] mb-8">
-              Meet our characters
+              Conoce nuestros personajes
             </h2>
             
             <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
@@ -151,9 +151,9 @@ const HomePage: React.FC = () => {
                   <span className="text-3xl">🧒</span>
                 </div>
                 <h3 className="text-2xl font-bold text-[#0D47A1] mb-2">Teo</h3>
-                <p className="text-[#37474F] mb-4">9 years • 4th Grade</p>
+                <p className="text-[#37474F] mb-4">9 años • 4º Básico</p>
                 <p className="text-[#37474F] text-sm leading-relaxed">
-                  Teo has difficulties with reading and writing. He enjoys colors and learns best with visual examples and patient guidance.
+                  Teo tiene dificultades con la lectura y la escritura. Disfruta de los colores y aprende mejor con ejemplos visuales y orientación paciente.
                 </p>
               </div>
 
@@ -162,9 +162,9 @@ const HomePage: React.FC = () => {
                   <span className="text-3xl">👧</span>
                 </div>
                 <h3 className="text-2xl font-bold text-[#0D47A1] mb-2">Jojo</h3>
-                <p className="text-[#37474F] mb-4">15 years • 10th Grade</p>
+                <p className="text-[#37474F] mb-4">15 años • 10º Medio</p>
                 <p className="text-[#37474F] text-sm leading-relaxed">
-                  Jojo is shy and has mild intellectual challenges. She likes music and soccer, and learns better with concrete examples.
+                  Jojo es tímida y presenta leves desafíos intelectuales. Le gusta la música y el fútbol, y aprende mejor con ejemplos concretos.
                 </p>
               </div>
             </div>
@@ -173,16 +173,16 @@ const HomePage: React.FC = () => {
           {/* CTA Section */}
           <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-12 text-center border border-blue-200">
             <h2 className="text-3xl font-bold text-[#0D47A1] mb-4">
-              Ready to get started?
+              ¿Listo para comenzar?
             </h2>
             <p className="text-[#37474F] text-lg mb-8 max-w-2xl mx-auto">
-              Join our educational platform and discover a new way to learn and teach through conversation.
+              Únete a nuestra plataforma educativa y descubre una nueva forma de aprender y enseñar mediante la conversación.
             </p>
             <button
               onClick={handleShowRegister}
               className="px-10 py-4 bg-[#1E88E5] hover:bg-blue-700 text-white rounded-xl font-semibold text-xl transition-all hover:shadow-lg"
             >
-              Create a free account
+              Crear cuenta gratuita
             </button>
           </div>
         </div>

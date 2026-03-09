@@ -37,10 +37,10 @@ const TeacherDashboard: React.FC = () => {
             <Users className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-[#0D47A1] mb-4">
-            Teacher Dashboard
+            Panel del docente
           </h1>
             <p className="text-lg text-[#37474F] max-w-2xl mx-auto">
-            Manage your students, monitor their progress, and chat with Teo and Jojo to better understand the learning experience.
+            Gestiona tus estudiantes, monitorea su progreso y chatea con Teo y Jojo para comprender mejor la experiencia de aprendizaje.
           </p>
         </div>
 
@@ -54,10 +54,10 @@ const TeacherDashboard: React.FC = () => {
               <UserCheck className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-lg font-semibold text-[#0D47A1] mb-2">
-              Manage Students
+              Gestionar estudiantes
             </h3>
             <p className="text-[#37474F] text-sm">
-              View student progress, review reports, and monitor their development.
+              Ver progreso de estudiantes, revisar informes y monitorear su desarrollo.
             </p>
           </div>
 
@@ -66,10 +66,10 @@ const TeacherDashboard: React.FC = () => {
               <BarChart3 className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-lg font-semibold text-[#0D47A1] mb-2">
-              Class Reports
+              Informes de la clase
             </h3>
             <p className="text-[#37474F] text-sm">
-              Access class-wide statistics and analyses.
+              Accede a estadísticas y análisis de toda la clase.
             </p>
           </div>
 
@@ -78,10 +78,10 @@ const TeacherDashboard: React.FC = () => {
               <BookOpen className="w-6 h-6 text-white" />
             </div>
             <h3 className="text-lg font-semibold text-[#0D47A1] mb-2">
-              Teaching Resources
+              Recursos docentes
             </h3>
             <p className="text-[#37474F] text-sm">
-              Find materials and strategies to improve the learning experience.
+              Encuentra materiales y estrategias para mejorar la experiencia de aprendizaje.
             </p>
           </div>
         </div>
@@ -91,20 +91,20 @@ const TeacherDashboard: React.FC = () => {
           <div className="flex items-center justify-center space-x-3 mb-8">
             <MessageSquare className="w-6 h-6 text-[#1E88E5]" />
             <h2 className="text-2xl font-bold text-[#0D47A1]">
-              Experience the Conversation
+              Experimenta la conversación
             </h2>
           </div>
             <p className="text-center text-[#37474F] mb-8 max-w-2xl mx-auto">
-            As a teacher, you can also chat with Teo and Jojo to better understand how your students interact and gain valuable insights.
+            Como docente, también puedes chatear con Teo y Jojo para comprender mejor cómo interactúan tus estudiantes y obtener información valiosa.
           </p>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <CharacterCard
               name="Teo"
               age={9}
-              grade="4th Grade"
-              description="Experience how Teo interacts with reading and writing difficulties, preferring visual support and concrete examples."
-              interests={['Drawing', 'Colors', 'Visual games']}
+              grade="4º Básico"
+              description="Observa cómo Teo interactúa con dificultades de lectura y escritura, prefiriendo soporte visual y ejemplos concretos."
+              interests={['Dibujo', 'Colores', 'Juegos visuales']}
               onClick={() => {
                 setSelectedCharacter('Teo');
                 setCurrentView('chat');
@@ -114,9 +114,9 @@ const TeacherDashboard: React.FC = () => {
             <CharacterCard
               name="Jojo"
               age={15}
-              grade="10th Grade"
-              description="See how Jojo, with mild intellectual difficulties, responds better to concrete examples and topics of personal interest."
-              interests={['Music', 'Soccer', 'Practical examples']}
+              grade="10º Medio"
+              description="Mira cómo Jojo, con leves dificultades intelectuales, responde mejor a ejemplos concretos y temas de interés personal."
+              interests={['Música', 'Fútbol', 'Ejemplos prácticos']}
               onClick={() => {
                 setSelectedCharacter('Jojo');
                 setCurrentView('chat');

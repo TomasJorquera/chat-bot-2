@@ -23,12 +23,12 @@ const StudentDashboard: React.FC = () => {
           <div className="w-16 h-16 bg-gradient-to-br from-[#1E88E5] to-[#42A5F5] rounded-full flex items-center justify-center mx-auto mb-6">
             <BookOpen className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-[#0D47A1] mb-4">
-            Welcome to Educational Chat
-          </h1>
-          <p className="text-lg text-[#37474F] max-w-2xl mx-auto">
-            Chat with Teo and Jojo to practice and improve your communication skills. Each conversation is an opportunity to learn.
-          </p>
+            <h1 className="text-4xl font-bold text-[#0D47A1] mb-4">
+              Bienvenido al Chat Educativo
+            </h1>
+            <p className="text-lg text-[#37474F] max-w-2xl mx-auto">
+              Chatea con Teo y Jojo para practicar y mejorar tus habilidades de comunicación. Cada conversación es una oportunidad para aprender.
+            </p>
         </div>
 
         {/* Character Selection */}
@@ -36,26 +36,26 @@ const StudentDashboard: React.FC = () => {
           <div className="flex items-center justify-center space-x-3 mb-8">
             <Users className="w-6 h-6 text-[#1E88E5]" />
             <h2 className="text-2xl font-bold text-[#0D47A1]">
-              Choose who you want to chat with
-            </h2>
+                Elige con quién quieres chatear
+              </h2>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <CharacterCard
               name="Teo"
               age={9}
-              grade="4th Grade"
-              description="Teo has difficulties with reading and writing and may avoid language tasks. He responds better to visual support and concrete examples."
-              interests={['Drawings', 'Colors', 'Visual games']}
+                grade="4º Básico"
+                description="Teo tiene dificultades con la lectura y la escritura y puede evitar tareas de lenguaje. Responde mejor con soporte visual y ejemplos concretos."
+                interests={['Dibujo', 'Colores', 'Juegos visuales']}
               onClick={() => setSelectedCharacter('Teo')}
             />
 
             <CharacterCard
               name="Jojo"
               age={15}
-              grade="10th Grade"
-              description="Jojo has mild intellectual challenges and is shy. She learns better with concrete examples and enjoys activities related to her interests."
-              interests={['Music', 'Soccer', 'Practical examples']}
+                grade="10º Medio"
+                description="Jojo presenta leves desafíos intelectuales y es tímida. Aprende mejor con ejemplos concretos y disfruta actividades relacionadas con sus intereses."
+                interests={['Música', 'Fútbol', 'Ejemplos prácticos']}
               onClick={() => setSelectedCharacter('Jojo')}
             />
           </div>

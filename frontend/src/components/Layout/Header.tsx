@@ -18,7 +18,7 @@ const Header: React.FC = () => {
               <div className="w-8 h-8 bg-gradient-to-br from-[#1E88E5] to-[#42A5F5] rounded-lg flex items-center justify-center">
                 <User className="w-5 h-5 text-white" />
               </div>
-              <h1 className="text-xl font-bold text-[#0D47A1]">Educational Chat</h1>
+              <h1 className="text-xl font-bold text-[#0D47A1]">Chat Educativo</h1>
             </div>
 
             <div className="flex items-center space-x-4">
@@ -33,14 +33,14 @@ const Header: React.FC = () => {
                   {user.name} {user.lastName}
                 </span>
                   <span className="text-xs px-2 py-1 bg-blue-100 text-[#1E88E5] rounded-full">
-                  {user.type === 'teacher' ? 'Teacher' : 'Student'}
+                  {user.type === 'teacher' ? 'Docente' : 'Estudiante'}
                 </span>
               </button>
 
               <button
                 onClick={logout}
                 className="p-2 text-[#37474F] hover:text-[#E53935] hover:bg-red-50 rounded-lg transition-colors"
-                title="Sign Out"
+                title="Cerrar sesión"
               >
                 <LogOut className="w-5 h-5" />
               </button>

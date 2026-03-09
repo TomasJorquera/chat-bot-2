@@ -37,14 +37,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
   return (
     <div className="w-full max-w-md">
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-[#0D47A1] mb-2">Sign In</h2>
-        <p className="text-[#37474F]">Access your account</p>
+          <h2 className="text-2xl font-bold text-[#0D47A1] mb-2">Iniciar sesión</h2>
+          <p className="text-[#37474F]">Accede a tu cuenta</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-[#0D47A1] mb-2">
-            Email
+              Correo electrónico
           </label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#37474F]" />
@@ -53,7 +53,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none transition-all"
-              placeholder="user@correo.uss.cl"
+                placeholder="usuario@correo.uss.cl"
               required
             />
           </div>
@@ -61,7 +61,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
 
         <div>
           <label className="block text-sm font-medium text-[#0D47A1] mb-2">
-            Password
+              Contraseña
           </label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#37474F]" />
@@ -70,7 +70,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none transition-all"
-              placeholder="Your password"
+                placeholder="Tu contraseña"
               required
             />
           </div>
@@ -89,7 +89,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
           className="w-full bg-[#1E88E5] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors"
         >
           <LogIn className="w-5 h-5" />
-          <span>{loading ? 'Signing in...' : 'Sign In'}</span>
+            <span>{loading ? 'Iniciando sesión...' : 'Iniciar sesión'}</span>
         </button>
 
         <div className="text-center">
@@ -98,7 +98,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
             onClick={onSwitchToRegister}
             className="text-[#1E88E5] hover:text-blue-700 text-sm font-medium transition-colors"
           >
-            Don't have an account? Sign up here
+              ¿No tienes una cuenta? Regístrate aquí
           </button>
         </div>
       </form>

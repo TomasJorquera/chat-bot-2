@@ -32,10 +32,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
   };
 
   const getPasswordRequirements = (password: string) => [
-    { text: 'At least 6 characters', met: password.length >= 6 },
-    { text: 'One uppercase letter', met: /[A-Z]/.test(password) },
-    { text: 'One lowercase letter', met: /[a-z]/.test(password) },
-    { text: 'One number', met: /\d/.test(password) },
+    { text: 'Al menos 6 caracteres', met: password.length >= 6 },
+    { text: 'Una letra mayúscula', met: /[A-Z]/.test(password) },
+    { text: 'Una letra minúscula', met: /[a-z]/.test(password) },
+    { text: 'Un número', met: /\d/.test(password) },
   ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,17 +50,17 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
     setError('');
 
     if (!validateEmail(formData.email)) {
-      setError('Email must end with @correo.uss.cl or @docente.uss.cl');
+      setError('El correo debe terminar en @correo.uss.cl o @docente.uss.cl');
       return;
     }
 
     if (!validatePassword(formData.password)) {
-      setError('The password does not meet the requirements');
+      setError('La contraseña no cumple los requisitos');
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError('Las contraseñas no coinciden');
       return;
     }
 
@@ -75,15 +75,15 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
   return (
     <div className="w-full max-w-md">
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-[#0D47A1] mb-2">Create Account</h2>
-        <p className="text-[#37474F]">Join our educational platform</p>
+        <h2 className="text-2xl font-bold text-[#0D47A1] mb-2">Crear cuenta</h2>
+        <p className="text-[#37474F]">Únete a nuestra plataforma educativa</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-[#0D47A1] mb-2">
-              First Name
+              Nombre
             </label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#37474F]" />
@@ -93,7 +93,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
                 value={formData.name}
                 onChange={handleChange}
                 className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none transition-all"
-                placeholder="Your first name"
+                placeholder="Tu nombre"
                 required
               />
             </div>
@@ -101,7 +101,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
 
           <div>
             <label className="block text-sm font-medium text-[#0D47A1] mb-2">
-              Last Name
+              Apellido
             </label>
             <div className="relative">
               <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#37474F]" />
@@ -111,7 +111,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
                 value={formData.lastName}
                 onChange={handleChange}
                 className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none transition-all"
-                placeholder="Your last name"
+                placeholder="Tu apellido"
                 required
               />
             </div>
@@ -120,7 +120,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
 
         <div>
           <label className="block text-sm font-medium text-[#0D47A1] mb-2">
-            Email
+            Correo electrónico
           </label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#37474F]" />
@@ -130,7 +130,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
               value={formData.email}
               onChange={handleChange}
               className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none transition-all"
-              placeholder="user@correo.uss.cl"
+              placeholder="usuario@correo.uss.cl"
               required
             />
           </div>
@@ -138,7 +138,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
 
         <div>
           <label className="block text-sm font-medium text-[#0D47A1] mb-2">
-            Password
+            Contraseña
           </label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#37474F]" />
@@ -148,7 +148,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
               value={formData.password}
               onChange={handleChange}
               className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none transition-all"
-              placeholder="Your password"
+              placeholder="Tu contraseña"
               required
             />
           </div>
@@ -162,7 +162,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
                   ) : (
                     <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
                   )}
-                  <span className={`text-xs ${req.met ? 'text-[#43A047]' : 'text-[#37474F]'}`}>
+                    <span className={`text-xs ${req.met ? 'text-[#43A047]' : 'text-[#37474F]'}`}>
                     {req.text}
                   </span>
                 </div>
@@ -173,7 +173,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
 
         <div>
           <label className="block text-sm font-medium text-[#0D47A1] mb-2">
-            Confirm Password
+            Confirmar contraseña
           </label>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#37474F]" />
@@ -183,7 +183,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
               value={formData.confirmPassword}
               onChange={handleChange}
               className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none transition-all"
-              placeholder="Confirm your password"
+              placeholder="Confirma tu contraseña"
               required
             />
           </div>
@@ -202,7 +202,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
           className="w-full bg-[#1E88E5] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors"
         >
           <UserPlus className="w-5 h-5" />
-          <span>{loading ? 'Creating account...' : 'Create Account'}</span>
+          <span>{loading ? 'Creando cuenta...' : 'Crear cuenta'}</span>
         </button>
 
         <div className="text-center">
@@ -211,7 +211,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onSwitchToLogin, onClose })
             onClick={onSwitchToLogin}
             className="text-[#1E88E5] hover:text-blue-700 text-sm font-medium transition-colors"
           >
-            Already have an account? Sign in here
+            ¿Ya tienes una cuenta? Inicia sesión aquí
           </button>
         </div>
       </form>
