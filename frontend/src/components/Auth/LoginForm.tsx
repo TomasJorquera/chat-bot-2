@@ -7,22 +7,54 @@ interface LoginFormProps {
   onClose: () => void;
 }
 
+const inputBase: React.CSSProperties = {
+  width: '100%',
+  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid rgba(255,255,255,0.10)',
+  borderRadius: 12,
+  color: '#fff',
+  padding: '12px 14px 12px 42px',
+  fontSize: 14,
+  outline: 'none',
+  transition: 'border-color 0.2s, box-shadow 0.2s',
+};
+
+const DarkInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => {
+  const [focused, setFocused] = useState(false);
+  return (
+    <input
+      {...props}
+      style={{
+        ...inputBase,
+        borderColor: focused ? 'rgba(96,165,250,0.6)' : 'rgba(255,255,255,0.10)',
+        boxShadow: focused ? '0 0 0 3px rgba(59,130,246,0.15)' : 'none',
+      }}
+      onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
+      onBlur={(e)  => { setFocused(false); props.onBlur?.(e); }}
+    />
+  );
+};
+
 const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login, loading } = useAuth();
 
-  const validateEmail = (email: string) => {
-    return email.endsWith('@correo.uss.cl') || email.endsWith('@docente.uss.cl');
-  };
+  const validateEmail = (email: string) =>
+    email.endsWith('@correo.uss.cl') || email.endsWith('@docente.uss.cl');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (!validateEmail(email)) {
-      setError('Email must end with @correo.uss.cl or @docente.uss.cl');
+      setError('El correo debe terminar en @correo.uss.cl o @docente.uss.cl');
+      return;
+    }
+
+    if (password.length <= 4) {
+      setError('La contraseña debe tener más de 4 caracteres');
       return;
     }
 
@@ -30,79 +62,75 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
     if (success) {
       onClose();
     } else {
-      setError('Incorrect credentials');
+      setError('Credenciales incorrectas. Intenta de nuevo.');
     }
   };
 
   return (
-    <div className="w-full max-w-md">
-      <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-[#0D47A1] mb-2">Iniciar sesión</h2>
-          <p className="text-[#37474F]">Accede a tu cuenta</p>
+    <form onSubmit={handleSubmit} className="space-y-5">
+
+      {/* Email */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
+          Correo electrónico
+        </label>
+        <div className="relative">
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+          <DarkInput
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="usuario@correo.uss.cl"
+            required
+          />
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label className="block text-sm font-medium text-[#0D47A1] mb-2">
-              Correo electrónico
-          </label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#37474F]" />
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none transition-all"
-                placeholder="usuario@correo.uss.cl"
-              required
-            />
-          </div>
+      {/* Password */}
+      <div>
+        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
+          Contraseña
+        </label>
+        <div className="relative">
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+          <DarkInput
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="••••••••"
+            required
+          />
         </div>
+      </div>
 
-        <div>
-          <label className="block text-sm font-medium text-[#0D47A1] mb-2">
-              Contraseña
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#37474F]" />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none transition-all"
-                placeholder="Tu contraseña"
-              required
-            />
-          </div>
-        </div>
-
-        {error && (
-          <div className="flex items-center space-x-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-            <AlertCircle className="w-5 h-5 text-[#E53935]" />
-            <span className="text-[#E53935] text-sm">{error}</span>
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-[#1E88E5] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-lg font-medium flex items-center justify-center space-x-2 transition-colors"
+      {/* Error */}
+      {error && (
+        <div
+          className="flex items-center space-x-2.5 px-4 py-3 rounded-xl text-sm"
+          style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}
         >
-          <LogIn className="w-5 h-5" />
-            <span>{loading ? 'Iniciando sesión...' : 'Iniciar sesión'}</span>
-        </button>
-
-        <div className="text-center">
-            <button
-            type="button"
-            onClick={onSwitchToRegister}
-            className="text-[#1E88E5] hover:text-blue-700 text-sm font-medium transition-colors"
-          >
-              ¿No tienes una cuenta? Regístrate aquí
-          </button>
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span>{error}</span>
         </div>
-      </form>
-    </div>
+      )}
+
+      {/* Submit */}
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full flex items-center justify-center space-x-2 font-bold py-3 rounded-xl text-white transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+        style={{
+          background: loading
+            ? 'rgba(96,165,250,0.4)'
+            : 'linear-gradient(135deg, #3b82f6, #7c3aed)',
+          boxShadow: loading ? 'none' : '0 8px 24px rgba(59,130,246,0.35)',
+        }}
+      >
+        <LogIn className="w-4 h-4" />
+        <span>{loading ? 'Iniciando sesión…' : 'Iniciar sesión'}</span>
+      </button>
+
+    </form>
   );
 };
 

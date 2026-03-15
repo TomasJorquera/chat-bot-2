@@ -16,7 +16,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const characterInfo: Record<ChatInterfaceProps['character'], { emoji: string; age: number; grade: string; personality: string; greeting: string }> = {
     Teo: {
@@ -147,7 +147,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
     await getCharacterResponse(messageToSend); // Usamos la variable guardada
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -315,124 +315,210 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
 
   const info = characterInfo[character];
 
-  return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-[#E3F2FD] via-[#BBDEFB] to-[#90CAF9]">
-      {/* Header */}
-      <div className="bg-white/90 backdrop-blur-sm border-b border-blue-200 px-4 py-4 mt-16">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={onBack}
-              className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6 text-[#1E88E5]" />
-            </button>
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#42A5F5] to-[#90CAF9] rounded-full flex items-center justify-center">
-                <span className="text-2xl">{info.emoji}</span>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-[#0D47A1]">{character}</h2>
-                <p className="text-sm text-[#37474F]">{info.age} años - {info.grade}</p>
-              </div>
-            </div>
+  // USS Design tokens (local)
+  const C = {
+    navy:     '#1a2744',
+    navyDark: '#111b33',
+    red:      '#c0392b',
+    gold:     '#c9a84c',
+    gray50:   '#f8f9fb',
+    gray100:  '#eef0f5',
+    gray200:  '#d8dce8',
+    gray400:  '#8892aa',
+    white:    '#ffffff',
+  };
 
-              {evaluationError && (
-                <div className="max-w-4xl mx-auto mt-3 px-4">
-                    <div className="bg-yellow-100 border-l-4 border-yellow-400 p-3 text-sm text-yellow-800 rounded">
-                      <strong>Nota:</strong> No se pudo obtener la evaluación automática desde el backend. Se muestra un ejemplo.
-                      <div className="mt-1 text-xs text-yellow-700">Detalle: {evaluationError}</div>
-                    </div>
-                </div>
-              )}
+  return (
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: C.gray50, fontFamily: 'system-ui' }}>
+
+      {/* ── Header ── */}
+      <div style={{
+        background: C.white,
+        borderBottom: `1px solid ${C.gray200}`,
+        padding: '0 24px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        flexShrink: 0, height: 72,
+        boxShadow: '0 2px 8px rgba(26,39,68,0.07)',
+      }}>
+        {/* Left: back + character */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <button onClick={onBack}
+            style={{
+              width: 36, height: 36, borderRadius: 8, border: `1px solid ${C.gray200}`,
+              background: C.white, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = C.gray100; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = C.white; }}
+          >
+            <ArrowLeft style={{ width: 18, height: 18, color: C.navy }} />
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: '50%',
+              background: `linear-gradient(135deg, ${C.navy}, #243459)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
+            }}>{info.emoji}</div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: C.navyDark, fontFamily: "'Georgia', serif" }}>{character}</div>
+              <div style={{ fontSize: 12, color: C.gray400 }}>{info.age} años · {info.grade}</div>
+            </div>
           </div>
-          
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleFinishAndSave}
-              disabled={isEvaluating}
-              className={`flex items-center space-x-2 px-4 py-2 ${isEvaluating ? 'bg-gray-400 cursor-wait' : 'bg-[#43A047] hover:bg-green-600'} text-white rounded-lg transition-colors`}
-              title="Finalizar y guardar la conversación como PDF"
-            >
-                <FileText className="w-5 h-5" />
-                <span>{isEvaluating ? 'Generando...' : 'Finalizar y guardar'}</span>
-            </button>
-            <button onClick={handleRestart} className="p-2 text-gray-500 hover:bg-gray-200 rounded-lg" title="Reiniciar conversación (borra el historial actual)">
-              <RotateCcw className="w-5 h-5" />
-            </button>
-          </div>
+
+          {evaluationError && (
+            <div style={{
+              marginLeft: 16, padding: '6px 12px', borderRadius: 8,
+              background: '#fef9c3', border: '1px solid #fde047',
+              fontSize: 11, color: '#854d0e', maxWidth: 340,
+            }}>
+              <strong>Nota:</strong> Se muestra evaluación de ejemplo. {evaluationError}
+            </div>
+          )}
+        </div>
+
+        {/* Right: actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={handleFinishAndSave}
+            disabled={isEvaluating}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '9px 18px', borderRadius: 8, border: 'none', cursor: isEvaluating ? 'wait' : 'pointer',
+              background: isEvaluating ? C.gray200 : C.navy,
+              color: isEvaluating ? C.gray400 : C.white,
+              fontSize: 13, fontWeight: 700, fontFamily: "'Georgia', serif",
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { if (!isEvaluating) (e.currentTarget as HTMLButtonElement).style.background = '#243459'; }}
+            onMouseLeave={e => { if (!isEvaluating) (e.currentTarget as HTMLButtonElement).style.background = C.navy; }}
+          >
+            <FileText style={{ width: 16, height: 16 }} />
+            {isEvaluating ? 'Generando...' : 'Finalizar y guardar'}
+          </button>
+
+          <button onClick={handleRestart}
+            style={{
+              width: 36, height: 36, borderRadius: 8, border: `1px solid ${C.gray200}`,
+              background: C.white, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.15s',
+            }}
+            title="Reiniciar conversación"
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = C.gray100; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = C.white; }}
+          >
+            <RotateCcw style={{ width: 16, height: 16, color: C.gray400 }} />
+          </button>
         </div>
       </div>
 
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="max-w-4xl mx-auto space-y-4">
+      {/* ── Messages ── */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 24px 8px' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
           {messages.map((message: Message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[70%] px-4 py-3 rounded-2xl ${
-                  message.sender === 'user'
-                    ? 'bg-[#1E88E5] text-white rounded-br-sm'
-                    : 'bg-white text-[#0D47A1] rounded-bl-sm shadow-sm'
-                }`}
-              >
-                <p className="text-sm leading-relaxed">{message.content}</p>
-                <span className={`text-xs mt-1 block ${
-                  message.sender === 'user' ? 'text-blue-100' : 'text-[#37474F]'
-                }`}>
+            <div key={message.id} style={{ display: 'flex', justifyContent: message.sender === 'user' ? 'flex-end' : 'flex-start' }}>
+              {/* Avatar for character */}
+              {message.sender === 'character' && (
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%', flexShrink: 0, marginRight: 8, marginTop: 4,
+                  background: `linear-gradient(135deg, ${C.navy}, #243459)`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+                }}>{info.emoji}</div>
+              )}
+              <div style={{
+                maxWidth: '68%',
+                padding: '10px 14px',
+                borderRadius: message.sender === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                background: message.sender === 'user' ? C.navy : C.white,
+                color: message.sender === 'user' ? C.white : C.navyDark,
+                boxShadow: '0 1px 4px rgba(26,39,68,0.10)',
+                borderLeft: message.sender === 'character' ? `3px solid ${C.gold}` : 'none',
+              }}>
+                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {message.content}
+                </p>
+                <span style={{ fontSize: 10, marginTop: 4, display: 'block', opacity: 0.55 }}>
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
             </div>
           ))}
-          
+
           {isTyping && (
-            <div className="flex justify-start">
-              <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm">
-                <div className="flex items-center space-x-2">
-                  <Loader className="w-4 h-4 animate-spin text-[#1E88E5]" />
-                  <span className="text-[#37474F] text-sm">
-                    {character} está escribiendo...
-                  </span>
-                </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', gap: 8 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                background: `linear-gradient(135deg, ${C.navy}, #243459)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+              }}>{info.emoji}</div>
+              <div style={{
+                padding: '10px 16px', borderRadius: '18px 18px 18px 4px',
+                background: C.white, boxShadow: '0 1px 4px rgba(26,39,68,0.10)',
+                borderLeft: `3px solid ${C.gold}`,
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <Loader style={{ width: 14, height: 14, color: C.navy, animation: 'spin 1s linear infinite' }} />
+                <span style={{ fontSize: 13, color: C.gray400 }}>{character} está escribiendo...</span>
               </div>
             </div>
           )}
-          
+
           <div ref={messagesEndRef} />
         </div>
       </div>
 
-      {/* Message Input */}
-      <div className="bg-white/90 backdrop-blur-sm border-t border-blue-200 px-4 py-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-end space-x-3">
-            <div className="flex-1">
-              <input
-                ref={inputRef}
-                id="chat-input" // <-- Agregado para accesibilidad
-                type="text"
-                value={inputValue}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder={`Escribe un mensaje para ${character}...`}
-                className="w-full px-4 py-3 border border-blue-200 rounded-2xl focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none resize-none transition-all"
-                disabled={isTyping}
-              />
-            </div>
-            <button
-              onClick={handleSendMessage}
-              disabled={!inputValue.trim() || isTyping}
-              className="p-3 bg-[#1E88E5] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl transition-colors"
-            >
-              <Send className="w-5 h-5" />
-            </button>
-          </div>
+      {/* ── Input ── */}
+      <div style={{
+        background: C.white, borderTop: `1px solid ${C.gray200}`,
+        padding: '16px 24px', flexShrink: 0,
+      }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', alignItems: 'flex-end', gap: 10 }}>
+          <textarea
+            ref={inputRef}
+            value={inputValue}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyPress}
+            placeholder={`Escribe un mensaje para ${character}... (Enter para enviar, Shift+Enter para nueva línea)`}
+            disabled={isTyping}
+            rows={1}
+            style={{
+              flex: 1, padding: '11px 16px',
+              border: `1px solid ${C.gray200}`, borderRadius: 12,
+              fontSize: 14, fontFamily: 'system-ui', outline: 'none',
+              resize: 'none', overflowY: 'auto',
+              maxHeight: 140, lineHeight: 1.5,
+              color: C.navyDark, background: C.gray50,
+              transition: 'border-color 0.15s',
+            }}
+            onFocus={e => { e.currentTarget.style.borderColor = C.navy; e.currentTarget.style.background = C.white; }}
+            onBlur={e => { e.currentTarget.style.borderColor = C.gray200; e.currentTarget.style.background = C.gray50; }}
+            onInput={e => {
+              const t = e.currentTarget;
+              t.style.height = 'auto';
+              t.style.height = Math.min(t.scrollHeight, 140) + 'px';
+            }}
+          />
+          <button
+            onClick={handleSendMessage}
+            disabled={!inputValue.trim() || isTyping}
+            style={{
+              width: 44, height: 44, borderRadius: 12, border: 'none', flexShrink: 0,
+              background: !inputValue.trim() || isTyping ? C.gray200 : C.navy,
+              cursor: !inputValue.trim() || isTyping ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { if (inputValue.trim() && !isTyping) (e.currentTarget as HTMLButtonElement).style.background = '#243459'; }}
+            onMouseLeave={e => { if (inputValue.trim() && !isTyping) (e.currentTarget as HTMLButtonElement).style.background = C.navy; }}
+          >
+            <Send style={{ width: 18, height: 18, color: !inputValue.trim() || isTyping ? C.gray400 : C.white }} />
+          </button>
+        </div>
+        <div style={{ maxWidth: 760, margin: '6px auto 0', fontSize: 11, color: C.gray400, textAlign: 'right' }}>
+          Enter para enviar · Shift+Enter para nueva línea
         </div>
       </div>
+
       {showPreview && previewData && (
         <EvaluationPdfPreview
           character={character}
@@ -442,11 +528,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
           conclusion={previewData.conclusion}
           evaluationError={evaluationError}
           onClose={() => setShowPreview(false)}
-          onConfirm={() => {
-            setShowPreview(false);
-            // Confirmar: volvemos a la pantalla anterior (se puede ajustar según el flujo requerido)
-            onBack();
-          }}
+          onConfirm={() => { setShowPreview(false); onBack(); }}
         />
       )}
     </div>

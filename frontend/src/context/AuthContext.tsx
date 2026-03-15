@@ -51,7 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Mock validation - in real app, this would be API call
-    if (password.length >= 6) {
+    if (password.length > 4) {
       const userType = determineUserType(email);
       const newUser: User = {
         id: Date.now().toString(),
