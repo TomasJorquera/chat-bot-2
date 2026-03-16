@@ -30,7 +30,7 @@ const Header: React.FC = () => {
                   <User className="w-4 h-4 text-white" />
                 </div>
                 <span className="text-[#0D47A1] font-medium">
-                  {user.name} {user.lastName}
+                  {user.email}
                 </span>
                   <span className="text-xs px-2 py-1 bg-blue-100 text-[#1E88E5] rounded-full">
                   {user.type === 'teacher' ? 'Docente' : 'Estudiante'}

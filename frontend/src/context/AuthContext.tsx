@@ -1,8 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (userData: RegisterData) => Promise<boolean>;
   logout: () => void;
@@ -26,79 +29,76 @@ export const useAuth = () => {
   return context;
 };
 
+const determineUserType = (email: string): 'student' | 'teacher' => {
+  if (email.endsWith('@docente.uss.cl')) return 'teacher';
+  if (email.endsWith('@correo.uss.cl')) return 'student';
+  return 'student';
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const savedUser = localStorage.getItem('user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    const savedToken = localStorage.getItem('token');
+    if (savedUser) setUser(JSON.parse(savedUser));
+    if (savedToken) setToken(savedToken);
     setLoading(false);
   }, []);
 
-  const determineUserType = (email: string): 'student' | 'teacher' => {
-    if (email.endsWith('@docente.uss.cl')) return 'teacher';
-    if (email.endsWith('@correo.uss.cl')) return 'student';
-    return 'student'; // default
-  };
-
   const login = async (email: string, password: string): Promise<boolean> => {
     setLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock validation - in real app, this would be API call
-    if (password.length >= 6) {
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ correo: email, contrasena: password }),
+      });
+
+      if (!res.ok) {
+        setLoading(false);
+        return false;
+      }
+
+      const data = await res.json();
+      const accessToken: string = data.access_token;
+
       const userType = determineUserType(email);
       const newUser: User = {
-        id: Date.now().toString(),
-        name: 'User',
-        lastName: 'Demo',
+        id: email,
+        name: email,
+        lastName: '',
         email,
         type: userType,
       };
-      
+
       setUser(newUser);
+      setToken(accessToken);
       localStorage.setItem('user', JSON.stringify(newUser));
+      localStorage.setItem('token', accessToken);
       setLoading(false);
       return true;
+    } catch {
+      setLoading(false);
+      return false;
     }
-    
-    setLoading(false);
-    return false;
   };
 
-  const register = async (userData: RegisterData): Promise<boolean> => {
-    setLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const userType = determineUserType(userData.email);
-    const newUser: User = {
-      id: Date.now().toString(),
-      name: userData.name,
-      lastName: userData.lastName,
-      email: userData.email,
-      type: userType,
-    };
-    
-    setUser(newUser);
-    localStorage.setItem('user', JSON.stringify(newUser));
-    setLoading(false);
-    return true;
+  const register = async (_userData: RegisterData): Promise<boolean> => {
+    return false;
   };
 
   const logout = () => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,6 +1,20 @@
-# docker-compose.yml
-
 services:
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: chatbot_local
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
@@ -8,35 +22,29 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Monta el código local para desarrollo con live-reload
       - ./backend:/app
     env_file:
       - ./backend/.env
     environment:
-      # Esta URL apunta al servicio 'db' de Docker Compose con las credenciales correctas
-      - DATABASE_URL=postgresql://ingrequerimientos:ingrequerimientos@db:5432/chatbot_db
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/chatbot_local
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
-      - db # Asegura que la base de datos inicie antes que el backend
+      db:
+        condition: service_healthy
 
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
-      - "5173:80" # Expone el puerto 80 de Nginx en el puerto 5173 de tu máquina
-    depends_on:
-      - backend # Asegura que el backend inicie antes que el frontend
-
-  db:
-    image: postgres:13-alpine
+      - "5173:5173"
     volumes:
-      - postgres_data:/var/lib/postgresql/data/
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
     environment:
-      - POSTGRES_USER=ingrequerimientos
-      - POSTGRES_PASSWORD=ingrequerimientos
-      - POSTGRES_DB=chatbot_db
-    ports:
-      - "5432:5432" # Opcional: para conectar a la BD desde tu máquina
+      VITE_API_URL: http://localhost:8000
+    depends_on:
+      - backend
 
 volumes:
-  postgres_data:
+  postgres_dev_data:

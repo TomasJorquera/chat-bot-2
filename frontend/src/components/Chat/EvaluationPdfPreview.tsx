@@ -20,13 +20,13 @@ interface Props {
   conclusion: { title: string; text: string }[];
   evaluationError?: string | null;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (pdfBase64: string) => void;
 }
 
 const EvaluationPdfPreview: React.FC<Props> = (props: Props) => {
   const { character, info, conversation, evaluation, conclusion, onClose, onConfirm, evaluationError } = props;
 
-  const handleDownloadPdf = () => {
+  const buildDoc = () => {
     const doc = new jsPDF({ unit: 'pt' });
 
     doc.setFontSize(18);
@@ -98,8 +98,19 @@ const EvaluationPdfPreview: React.FC<Props> = (props: Props) => {
       currentY = currentY + blockHeight;
     });
 
-    // Save PDF
+    return doc;
+  };
+
+  const handleDownloadPdf = () => {
+    const doc = buildDoc();
     doc.save(`informe_${character.toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const handleConfirm = () => {
+    const doc = buildDoc();
+    doc.save(`informe_${character.toLowerCase()}_${new Date().toISOString().split('T')[0]}.pdf`);
+    const base64 = doc.output('datauristring');
+    onConfirm(base64);
   };
 
   return (
@@ -223,7 +234,7 @@ const EvaluationPdfPreview: React.FC<Props> = (props: Props) => {
           </div>
 
           <div className="flex justify-end space-x-3">
-            <button onClick={onConfirm} className="px-4 py-2 bg-green-600 text-white rounded">Confirmar y volver</button>
+            <button onClick={handleConfirm} className="px-4 py-2 bg-green-600 text-white rounded">Confirmar y volver</button>
             <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Cerrar</button>
           </div>
         </div>

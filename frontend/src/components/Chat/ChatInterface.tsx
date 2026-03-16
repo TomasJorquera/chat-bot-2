@@ -2,23 +2,35 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, ArrowLeft, RotateCcw, FileText, Loader } from 'lucide-react';
 import { Message } from '../../types';
 import EvaluationPdfPreview from './EvaluationPdfPreview';
+import { useAuth } from '../../context/AuthContext';
 
 interface ChatInterfaceProps {
   character: 'Teo' | 'Jojo';
   onBack: () => void;
 }
 
-// (HistoryMessage removed — not used)
+const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000';
 
-const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) => {
-  const { character, onBack } = props;
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ character, onBack }) => {
+  const { token } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [interaccionId, setInteraccionId] = useState<number | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewData, setPreviewData] = useState<null | {
+    evaluation: { criterio: string; descripcion: string; cumplimiento: 'SÍ' | 'NO'; analisis: string; justificacion: string }[];
+    conclusion: { title: string; text: string }[];
+    conversation: Message[];
+    puntaje: number;
+  }>(null);
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const [evaluationError, setEvaluationError] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const characterInfo: Record<ChatInterfaceProps['character'], { emoji: string; age: number; grade: string; personality: string; greeting: string }> = {
+  const characterInfo: Record<'Teo' | 'Jojo', { emoji: string; age: number; grade: string; personality: string; greeting: string }> = {
     Teo: {
       emoji: '🧒',
       age: 9,
@@ -35,94 +47,95 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
     }
   };
 
-  useEffect(() => {
-    // Al entrar al chat, reinicia el historial del personaje en el backend
-    // y muestra el saludo inicial en el frontend.
-    const startNewSession = async () => {
-      const apiUrl = ((import.meta as any).env?.VITE_API_URL) || 'http://localhost:8000';
-      await fetch(`${apiUrl}/chat/restart`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ character: character }),
-      });
+  const authHeaders = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  };
 
-      const greeting: Message = {
-        id: Date.now().toString(),
-        content: characterInfo[character].greeting,
-        sender: 'character',
-        timestamp: new Date()
-      };
-      setMessages([greeting]);
+  // Inicia una nueva interacción en la DB y muestra el saludo
+  const startNewSession = async () => {
+    try {
+      const res = await fetch(`${API_URL}/experimento/iniciar`, {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ personaje: character }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setInteraccionId(data.interaccion_id);
+      } else {
+        console.error('[CHAT] No se pudo iniciar la interacción:', await res.text());
+      }
+    } catch (err) {
+      console.error('[CHAT] Error al iniciar interacción:', err);
+    }
+
+    const greeting: Message = {
+      id: Date.now().toString(),
+      content: characterInfo[character].greeting,
+      sender: 'character',
+      timestamp: new Date(),
     };
+    setMessages([greeting]);
+  };
+
+  useEffect(() => {
     startNewSession();
   }, [character]);
 
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const getCharacterResponse = async (userMessage: string) => {
-    // Prepara el historial para la IA, excluyendo el saludo inicial (comparando por contenido)
-    const historyForAI = messages
-      .filter((m: Message) => m.content !== characterInfo[character].greeting)
-      .map((m: Message) => ({
-        role: m.sender === 'user' ? 'user' : 'model',
-        parts: [m.content]
+  // Construye el historial en el formato que espera el backend
+  const buildHistory = (msgs: Message[]) =>
+    msgs
+      .filter(m => m.content !== characterInfo[character].greeting)
+      .map(m => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.content,
       }));
+
+  const getCharacterResponse = async (userMessage: string, currentMessages: Message[]) => {
+    if (!interaccionId) {
+      console.error('[CHAT] interaccion_id no disponible');
+      return;
+    }
 
     setIsTyping(true);
     try {
-  const apiUrl = ((import.meta as any).env?.VITE_API_URL) || 'http://localhost:8000';
-      const apiResponse = await fetch(`${apiUrl}/chat`, {
+      const res = await fetch(`${API_URL}/experimento/mensaje`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: authHeaders,
         body: JSON.stringify({
-          message: userMessage,
-          character: character,
-          history: historyForAI // Enviamos el historial actual
+          interaccion_id: interaccionId,
+          personaje: character,
+          mensaje: userMessage,
+          history: buildHistory(currentMessages),
         }),
       });
 
-      if (!apiResponse.ok) {
-        const errorData = await apiResponse.json();
-        throw new Error(errorData.detail || 'Error connecting to server');
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || `Error ${res.status}`);
       }
 
-      const data = await apiResponse.json();
-      console.log("[FRONT] Respuesta del backend:", data); // Depuración
-
-      const content = data.response;
-      if (!content) {
-        throw new Error("Server response is empty.");
-      }
-
+      const data = await res.json();
       const characterResponse: Message = {
         id: Date.now().toString(),
-        content,
+        content: data.respuesta,
         sender: 'character',
         timestamp: new Date(),
       };
-  setMessages((prev: Message[]) => [...prev, characterResponse]);
+      setMessages(prev => [...prev, characterResponse]);
     } catch (error) {
-      console.error("Error fetching character response:", error);
-      let errorMessage = 'Lo siento, no puedo conversar en este momento.';
-      if (error instanceof Error) {
-        // Include error detail for debugging
-        errorMessage = `Error de conexión: ${error.message}. Comprueba que el servidor esté en funcionamiento.`;
-      }
-      const errorResponse: Message = {
+      const msg = error instanceof Error ? error.message : 'Error desconocido';
+      setMessages(prev => [...prev, {
         id: Date.now().toString(),
-        content: errorMessage,
+        content: `Error de conexión: ${msg}`,
         sender: 'character',
         timestamp: new Date(),
-      };
-  setMessages((prev: Message[]) => [...prev, errorResponse]);
+      }]);
     } finally {
       setIsTyping(false);
     }
@@ -130,21 +143,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
-
-    const messageToSend = inputValue; // Guardamos el mensaje antes de limpiar el input
-
+    const text = inputValue;
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: messageToSend,
+      content: text,
       sender: 'user',
-      timestamp: new Date()
+      timestamp: new Date(),
     };
-
-  setMessages((prev: Message[]) => [...prev, userMessage]);
+    const updated = [...messages, userMessage];
+    setMessages(updated);
     setInputValue('');
-    
-    // Llamamos a la nueva función que conecta con el backend
-    await getCharacterResponse(messageToSend); // Usamos la variable guardada
+    await getCharacterResponse(text, updated);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -155,76 +164,39 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
   };
 
   const handleRestart = async () => {
-    try {
-    const apiUrl = ((import.meta as any).env?.VITE_API_URL) || 'http://localhost:8000';
-      await fetch(`${apiUrl}/chat/restart`, { 
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ character: character })
-      });
-      
-      // Si la llamada al backend es exitosa, reinicia el estado local
-      const greeting: Message = {
-        id: Date.now().toString(),
-        content: characterInfo[character].greeting,
-        sender: 'character',
-        timestamp: new Date()
-      };
-      setMessages([greeting]);
-
-    } catch (error) {
-      console.error("Error al reiniciar la conversación:", error);
-      alert("No se pudo reiniciar la conversación. Inténtalo de nuevo.");
-    }
+    setMessages([]);
+    setInteraccionId(null);
+    await startNewSession();
   };
 
   const handleFinishAndSave = async () => {
-    // Excluir el saludo inicial antes de generar el reporte
-    const conversationToSave = messages.filter((msg: Message) => msg.content !== characterInfo[character].greeting);
-
+    const conversationToSave = messages.filter(m => m.content !== characterInfo[character].greeting);
     if (conversationToSave.length === 0) {
-      alert("No hay conversación para generar un informe.");
+      alert('No hay conversación para generar un informe.');
       return;
     }
 
-    // Intentamos solicitar la evaluación real al backend. Si falla, usamos datos de ejemplo como fallback.
-    const apiUrl = ((import.meta as any).env?.VITE_API_URL) || 'http://localhost:8000';
+    setIsEvaluating(true);
+    setEvaluationError(null);
+
+    let puntaje: number | null = null;
+    let evaluationArray: any[] = [];
+    let conclusionArray: { title: string; text: string }[] = [];
+
     try {
-      setIsEvaluating(true);
-      setEvaluationError(null);
       const payload = {
         messages: conversationToSave.map(m => ({ sender: m.sender, content: m.content })),
-        character: character
+        character,
       };
-
-      const res = await fetch(`${apiUrl}/evaluate`, {
+      const res = await fetch(`${API_URL}/evaluate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
-      if (!res.ok) {
-        // Intentar leer detalle del error devuelto por el backend
-        let text = await res.text();
-        try {
-          const parsed = JSON.parse(text);
-          text = parsed.detail || JSON.stringify(parsed);
-        } catch (e) {
-          // mantener text crudo
-        }
-        throw new Error(`Server responded ${res.status}: ${text}`);
-      }
+      if (!res.ok) throw new Error(`Server responded ${res.status}: ${await res.text()}`);
 
       const evalData = await res.json();
-      console.log('[FRONT] Evaluación recibida:', evalData);
-
-      // El backend puede devolver dos formatos según la implementación del prompt:
-      // 1) { evaluation: [...], conclusion: [...] }
-      // 2) { criteria: [...], total_score, performance_range, conclusion: '...' }
-      let evaluationArray: any[] = [];
-      let conclusionArray: { title: string; text: string }[] = [];
 
       if (Array.isArray(evalData.evaluation)) {
         evaluationArray = evalData.evaluation.map((it: any) => ({
@@ -232,9 +204,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
           descripcion: it.descripcion || it.description || '',
           cumplimiento: (it.cumplimiento || it.compliance || 'NO') as 'SÍ' | 'NO',
           analisis: it.analisis || it.analysis || '',
-          justificacion: it.justificacion || it.justification || ''
+          justificacion: it.justificacion || it.justification || '',
         }));
-
         if (Array.isArray(evalData.conclusion)) {
           conclusionArray = evalData.conclusion;
         } else if (typeof evalData.conclusion === 'string') {
@@ -246,72 +217,48 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
           descripcion: it.description || '',
           cumplimiento: (it.compliance || it.cumplimiento || 'NO') as 'SÍ' | 'NO',
           analisis: it.analysis || it.analisis || '',
-          justificacion: it.justification || it.justificacion || ''
+          justificacion: it.justification || it.justificacion || '',
         }));
-
-        // Create conclusion based on total_score/performance_range
-        const total = evalData.total_score ?? evaluationArray.filter(e => e.cumplimiento === 'SÍ').length;
-        const range = evalData.performance_range ?? (total >= 8 ? 'Successful' : total >=5 ? 'Competent' : total >=3 ? 'Acceptable' : 'Below minimum');
-        conclusionArray = [ { title: 'Puntaje total', text: `${total} de 11 criterios cumplidos - Desempeño: ${range}` } ];
-        if (evalData.conclusion && typeof evalData.conclusion === 'string') {
-          conclusionArray.push({ title: 'Conclusión', text: evalData.conclusion });
-        }
+        const total = evalData.total_score ?? evaluationArray.filter((e: any) => e.cumplimiento === 'SÍ').length;
+        const range = evalData.performance_range ?? (total >= 8 ? 'Excelente' : total >= 5 ? 'Competente' : total >= 3 ? 'Aceptable' : 'Por debajo del mínimo');
+        conclusionArray = [{ title: 'Puntaje total', text: `${total} de 11 criterios cumplidos - Desempeño: ${range}` }];
+        if (evalData.conclusion) conclusionArray.push({ title: 'Conclusión', text: evalData.conclusion });
       }
 
-      // Si el backend no devolvió la evaluación esperada, fallback a ejemplo
-      if (!evaluationArray || evaluationArray.length === 0) throw new Error('Empty evaluation');
+      if (!evaluationArray.length) throw new Error('Empty evaluation');
 
-      setPreviewData({ evaluation: evaluationArray, conclusion: conclusionArray, conversation: conversationToSave });
-      setShowPreview(true);
-      return;
+      puntaje = evaluationArray.filter((e: any) => e.cumplimiento === 'SÍ').length;
     } catch (err) {
-      console.warn('No se pudo obtener la evaluación del backend; usando datos de ejemplo. Detalle:', err);
+      console.warn('[CHAT] Evaluación fallida, usando fallback:', err);
       setEvaluationError(err instanceof Error ? err.message : String(err));
 
-      // Fallback: mantener los datos de ejemplo previos para que la UI funcione
-      const exampleEvaluation = [
-        { criterio: '1. Andamiaje funcional/ecológico', descripcion: 'El docente relaciona el tema de la sesión con una situación de la vida real.', cumplimiento: 'SÍ' as const, analisis: 'Relaciona conceptos con ejemplos cotidianos.', justificacion: 'Observado en mensajes que contextualizan el aprendizaje con situaciones diarias.' },
-        { criterio: '2. Secuenciación clara de pasos', descripcion: 'El docente descompone la actividad en pasos visuales y evita instrucciones complejas.', cumplimiento: 'SÍ' as const, analisis: 'Las instrucciones se presentan de forma clara y ordenada.', justificacion: 'Los mensajes muestran una secuencia lógica y progresiva.' },
-        { criterio: '3. Adaptación de textos y consignas', descripcion: 'El docente simplifica el lenguaje y evita preguntas abstractas.', cumplimiento: 'NO' as const, analisis: 'Algunas consignas podrían ser más concretas.', justificacion: 'Algunos mensajes usan términos abstractos que podrían simplificarse.' },
-        { criterio: '4. Uso de memoria concreta', descripcion: 'El docente usa conocimientos previos o intereses del estudiante (dibujo, mascota).', cumplimiento: 'SÍ' as const, analisis: 'Conecta los intereses del estudiante con el aprendizaje.', justificacion: 'Referencias a los intereses del alumno ayudan a facilitar el aprendizaje.' },
-        { criterio: '5. Prevención de burlas y miedo', descripcion: 'El docente aplica refuerzo positivo genuino y enfatiza un espacio seguro.', cumplimiento: 'SÍ' as const, analisis: 'El tono refuerza la seguridad emocional del estudiante.', justificacion: 'Mantiene un tono positivo y validante durante la interacción.' },
-        { criterio: '6. Validación de la vulnerabilidad', descripcion: 'El docente valida emociones (p. ej., frustración) antes de redirigir la tarea.', cumplimiento: 'NO' as const, analisis: 'No se reconocieron explícitamente emociones en algunos puntos de dificultad.', justificacion: 'No se observó validación emocional clara en momentos de dificultad.' },
-        { criterio: '7. Promoción de autonomía social', descripcion: 'El docente anima al estudiante a expresar necesidades o decidir cómo avanzar.', cumplimiento: 'SÍ' as const, analisis: 'Fomenta la autorregulación y la petición de ayuda.', justificacion: 'Ofrece opciones e incentiva la toma de decisiones.' },
-        { criterio: '8. Vinculación curricular', descripcion: 'El docente aplica ejemplos funcionales al contenido curricular (lenguaje o matemáticas).', cumplimiento: 'NO' as const, analisis: 'Los ejemplos no vinculan claramente con objetivos curriculares.', justificacion: 'Los ejemplos usados no se conectan explícitamente con objetivos escolares.' },
-        { criterio: '9. Indagación vocacional temprana', descripcion: 'El docente relaciona habilidades del estudiante (dibujo, lógica) con proyecciones futuras.', cumplimiento: 'SÍ' as const, analisis: 'Fomenta una percepción positiva del talento personal.', justificacion: 'Relaciona habilidades artísticas con posibles desarrollos futuros.' },
-        { criterio: '10. Refuerzo de autonomía comunitaria', descripcion: 'El docente propone simulaciones prácticas (compras, resolución de problemas).', cumplimiento: 'NO' as const, analisis: 'No incluyó escenarios prácticos de la vida diaria en los ejemplos.', justificacion: 'No se emplearon situaciones prácticas cotidianas.' },
-        { criterio: '11. Promoción de inclusión curricular', descripcion: 'El docente propone situaciones para que el estudiante participe en grupo o con apoyo.', cumplimiento: 'SÍ' as const, analisis: 'Integra estrategias para fomentar la participación entre pares.', justificacion: 'Sugiere actividades colaborativas y oportunidades de participación.' }
+      evaluationArray = [
+        { criterio: '1. Andamiaje funcional/ecológico', descripcion: 'El docente relaciona el tema con situación real.', cumplimiento: 'SÍ' as const, analisis: 'Relaciona conceptos con ejemplos cotidianos.', justificacion: 'Observado en mensajes que contextualizan el aprendizaje.' },
+        { criterio: '2. Secuenciación clara de pasos', descripcion: 'Descompone la actividad en pasos visuales.', cumplimiento: 'SÍ' as const, analisis: 'Las instrucciones se presentan de forma clara.', justificacion: 'Los mensajes muestran una secuencia lógica.' },
+        { criterio: '3. Adaptación de textos y consignas', descripcion: 'Simplifica el lenguaje y evita preguntas abstractas.', cumplimiento: 'NO' as const, analisis: 'Algunas consignas podrían ser más concretas.', justificacion: 'Algunos mensajes usan términos abstractos.' },
+        { criterio: '4. Uso de memoria concreta', descripcion: 'Usa conocimientos previos e intereses del estudiante.', cumplimiento: 'SÍ' as const, analisis: 'Conecta intereses con el aprendizaje.', justificacion: 'Referencias a los intereses del alumno.' },
+        { criterio: '5. Prevención de burlas y miedo', descripcion: 'Aplica refuerzo positivo genuino.', cumplimiento: 'SÍ' as const, analisis: 'El tono refuerza la seguridad emocional.', justificacion: 'Mantiene un tono positivo y validante.' },
+        { criterio: '6. Validación de la vulnerabilidad', descripcion: 'Valida emociones antes de redirigir la tarea.', cumplimiento: 'NO' as const, analisis: 'No se reconocieron explícitamente emociones.', justificacion: 'No se observó validación emocional clara.' },
+        { criterio: '7. Promoción de autonomía social', descripcion: 'Anima al estudiante a expresar necesidades.', cumplimiento: 'SÍ' as const, analisis: 'Fomenta la autorregulación.', justificacion: 'Ofrece opciones e incentiva decisiones.' },
+        { criterio: '8. Vinculación curricular', descripcion: 'Aplica ejemplos al contenido curricular.', cumplimiento: 'NO' as const, analisis: 'Los ejemplos no vinculan con objetivos curriculares.', justificacion: 'No se conectan con objetivos escolares.' },
+        { criterio: '9. Indagación vocacional temprana', descripcion: 'Relaciona habilidades con proyecciones futuras.', cumplimiento: 'SÍ' as const, analisis: 'Fomenta percepción positiva del talento.', justificacion: 'Relaciona habilidades con desarrollos futuros.' },
+        { criterio: '10. Refuerzo de autonomía comunitaria', descripcion: 'Propone simulaciones prácticas de la vida diaria.', cumplimiento: 'NO' as const, analisis: 'No incluyó escenarios prácticos.', justificacion: 'No se emplearon situaciones cotidianas.' },
+        { criterio: '11. Promoción de inclusión curricular', descripcion: 'Propone situaciones para participar en grupo.', cumplimiento: 'SÍ' as const, analisis: 'Integra estrategias de participación.', justificacion: 'Sugiere actividades colaborativas.' },
       ];
-
-      const criteriosCumplidos = exampleEvaluation.filter(e => e.cumplimiento === 'SÍ').length;
-      const rangoDesempeno = criteriosCumplidos >= 8 ? 'Excelente' : criteriosCumplidos >= 5 ? 'Competente' : criteriosCumplidos >= 3 ? 'Aceptable' : 'Por debajo del mínimo';
-      const exampleConclusion = [ { title: 'Puntaje total', text: `${criteriosCumplidos} de 11 criterios cumplidos - Desempeño: ${rangoDesempeno}` }, { title: 'Fortalezas', text: 'El docente demuestra habilidad para crear un entorno seguro y conectar ejemplos con los intereses del estudiante.' }, { title: 'Áreas de mejora', text: 'Existen oportunidades para brindar validación emocional más explícita y enlaces curriculares más sólidos.' }, { title: 'Sugerencias pedagógicas', text: '1. Incluir más momentos de validación emocional antes de redirigir tareas.\n2. Aumentar el uso de ejemplos prácticos vinculados a la vida diaria y al currículo.' } ];
-
-      setPreviewData({ evaluation: exampleEvaluation, conclusion: exampleConclusion, conversation: conversationToSave });
-      setShowPreview(true);
-    } finally {
-      setIsEvaluating(false);
+      const count = evaluationArray.filter((e: any) => e.cumplimiento === 'SÍ').length;
+      const rango = count >= 8 ? 'Excelente' : count >= 5 ? 'Competente' : count >= 3 ? 'Aceptable' : 'Por debajo del mínimo';
+      conclusionArray = [
+        { title: 'Puntaje total', text: `${count} de 11 criterios cumplidos - Desempeño: ${rango}` },
+        { title: 'Fortalezas', text: 'El docente crea un entorno seguro y conecta ejemplos con los intereses del estudiante.' },
+        { title: 'Áreas de mejora', text: 'Brindar validación emocional más explícita y enlaces curriculares más sólidos.' },
+      ];
+      puntaje = count;
     }
+
+    setPreviewData({ evaluation: evaluationArray, conclusion: conclusionArray, conversation: conversationToSave, puntaje: puntaje ?? 0 });
+    setShowPreview(true);
+    setIsEvaluating(false);
   };
-
-  // Estados para la vista previa
-  const [showPreview, setShowPreview] = useState(false);
-  const [previewData, setPreviewData] = useState<null | { 
-    evaluation: { 
-      criterio: string;
-      descripcion: string;
-      cumplimiento: 'SÍ' | 'NO';
-      analisis: string;
-      justificacion: string;
-    }[];
-    conclusion: { title: string; text: string }[];
-    conversation: Message[];
-  }>(null);
-
-  // Estado para indicar que se está generando la evaluación y cualquier error ocurrido
-  const [isEvaluating, setIsEvaluating] = useState(false);
-  const [evaluationError, setEvaluationError] = useState<string | null>(null);
-
 
   const info = characterInfo[character];
 
@@ -321,10 +268,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
       <div className="bg-white/90 backdrop-blur-sm border-b border-blue-200 px-4 py-4 mt-16">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button
-              onClick={onBack}
-              className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
-            >
+            <button onClick={onBack} className="p-2 hover:bg-blue-50 rounded-lg transition-colors">
               <ArrowLeft className="w-6 h-6 text-[#1E88E5]" />
             </button>
             <div className="flex items-center space-x-3">
@@ -337,102 +281,85 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
               </div>
             </div>
 
-              {evaluationError && (
-                <div className="max-w-4xl mx-auto mt-3 px-4">
-                    <div className="bg-yellow-100 border-l-4 border-yellow-400 p-3 text-sm text-yellow-800 rounded">
-                      <strong>Nota:</strong> No se pudo obtener la evaluación automática desde el backend. Se muestra un ejemplo.
-                      <div className="mt-1 text-xs text-yellow-700">Detalle: {evaluationError}</div>
-                    </div>
-                </div>
-              )}
+            {evaluationError && (
+              <div className="ml-4 bg-yellow-100 border-l-4 border-yellow-400 p-3 text-sm text-yellow-800 rounded">
+                <strong>Nota:</strong> Evaluación automática no disponible, se muestra un ejemplo.
+                <div className="mt-1 text-xs text-yellow-700">{evaluationError}</div>
+              </div>
+            )}
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <button
               onClick={handleFinishAndSave}
               disabled={isEvaluating}
               className={`flex items-center space-x-2 px-4 py-2 ${isEvaluating ? 'bg-gray-400 cursor-wait' : 'bg-[#43A047] hover:bg-green-600'} text-white rounded-lg transition-colors`}
-              title="Finalizar y guardar la conversación como PDF"
             >
-                <FileText className="w-5 h-5" />
-                <span>{isEvaluating ? 'Generando...' : 'Finalizar y guardar'}</span>
+              <FileText className="w-5 h-5" />
+              <span>{isEvaluating ? 'Generando...' : 'Finalizar y guardar'}</span>
             </button>
-            <button onClick={handleRestart} className="p-2 text-gray-500 hover:bg-gray-200 rounded-lg" title="Reiniciar conversación (borra el historial actual)">
+            <button onClick={handleRestart} className="p-2 text-gray-500 hover:bg-gray-200 rounded-lg" title="Reiniciar conversación">
               <RotateCcw className="w-5 h-5" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Chat Messages */}
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="max-w-4xl mx-auto space-y-4">
-          {messages.map((message: Message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[70%] px-4 py-3 rounded-2xl ${
-                  message.sender === 'user'
-                    ? 'bg-[#1E88E5] text-white rounded-br-sm'
-                    : 'bg-white text-[#0D47A1] rounded-bl-sm shadow-sm'
-                }`}
-              >
+          {messages.map(message => (
+            <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[70%] px-4 py-3 rounded-2xl ${
+                message.sender === 'user'
+                  ? 'bg-[#1E88E5] text-white rounded-br-sm'
+                  : 'bg-white text-[#0D47A1] rounded-bl-sm shadow-sm'
+              }`}>
                 <p className="text-sm leading-relaxed">{message.content}</p>
-                <span className={`text-xs mt-1 block ${
-                  message.sender === 'user' ? 'text-blue-100' : 'text-[#37474F]'
-                }`}>
+                <span className={`text-xs mt-1 block ${message.sender === 'user' ? 'text-blue-100' : 'text-[#37474F]'}`}>
                   {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
             </div>
           ))}
-          
+
           {isTyping && (
             <div className="flex justify-start">
               <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm">
                 <div className="flex items-center space-x-2">
                   <Loader className="w-4 h-4 animate-spin text-[#1E88E5]" />
-                  <span className="text-[#37474F] text-sm">
-                    {character} está escribiendo...
-                  </span>
+                  <span className="text-[#37474F] text-sm">{character} está escribiendo...</span>
                 </div>
               </div>
             </div>
           )}
-          
           <div ref={messagesEndRef} />
         </div>
       </div>
 
-      {/* Message Input */}
+      {/* Input */}
       <div className="bg-white/90 backdrop-blur-sm border-t border-blue-200 px-4 py-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-end space-x-3">
-            <div className="flex-1">
-              <input
-                ref={inputRef}
-                id="chat-input" // <-- Agregado para accesibilidad
-                type="text"
-                value={inputValue}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder={`Escribe un mensaje para ${character}...`}
-                className="w-full px-4 py-3 border border-blue-200 rounded-2xl focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none resize-none transition-all"
-                disabled={isTyping}
-              />
-            </div>
-            <button
-              onClick={handleSendMessage}
-              disabled={!inputValue.trim() || isTyping}
-              className="p-3 bg-[#1E88E5] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl transition-colors"
-            >
-              <Send className="w-5 h-5" />
-            </button>
-          </div>
+        <div className="max-w-4xl mx-auto flex items-end space-x-3">
+          <input
+            ref={inputRef}
+            type="text"
+            value={inputValue}
+            onChange={e => setInputValue(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder={`Escribe un mensaje para ${character}...`}
+            className="flex-1 px-4 py-3 border border-blue-200 rounded-2xl focus:ring-2 focus:ring-[#1E88E5] focus:border-transparent outline-none transition-all"
+            disabled={isTyping}
+          />
+          <button
+            onClick={handleSendMessage}
+            disabled={!inputValue.trim() || isTyping}
+            className="p-3 bg-[#1E88E5] hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl transition-colors"
+          >
+            <Send className="w-5 h-5" />
+          </button>
         </div>
       </div>
+
       {showPreview && previewData && (
         <EvaluationPdfPreview
           character={character}
@@ -442,9 +369,23 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
           conclusion={previewData.conclusion}
           evaluationError={evaluationError}
           onClose={() => setShowPreview(false)}
-          onConfirm={() => {
+          onConfirm={async (pdfBase64: string) => {
+            if (interaccionId) {
+              try {
+                await fetch(`${API_URL}/experimento/finalizar`, {
+                  method: 'POST',
+                  headers: authHeaders,
+                  body: JSON.stringify({
+                    interaccion_id: interaccionId,
+                    puntaje_evaluador: previewData.puntaje,
+                    pdf_url: pdfBase64,
+                  }),
+                });
+              } catch (err) {
+                console.error('[CHAT] No se pudo guardar el PDF en DB:', err);
+              }
+            }
             setShowPreview(false);
-            // Confirmar: volvemos a la pantalla anterior (se puede ajustar según el flujo requerido)
             onBack();
           }}
         />
