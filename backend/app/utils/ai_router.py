@@ -1,4 +1,14 @@
+"""
+Router multi-modelo con rotación de API keys.
+
+Soporta múltiples keys por modelo:
+  - GOOGLE_API_KEYS=key1,key2,key3   (o GOOGLE_API_KEY para una sola)
+  - DEEPSEEK_API_KEYS=key1,key2      (o DEEPSEEK_API_KEY para una sola)
+
+La rotación es round-robin para distribuir carga y evitar rate limits.
+"""
 import os
+import itertools
 import google.generativeai as genai
 from openai import AsyncOpenAI
 
@@ -7,25 +17,38 @@ MODELOS_CONFIG = {
     "gemini-flash-lite": {
         "provider":     "google",
         "model_id":     "gemini-2.5-flash-lite",
-        "input_price":  0.10,
-        "output_price": 0.40,
-        "cache_price":  0.01,
-    },
-    "gpt-nano": {
-        "provider":     "openai",
-        "model_id":     "gpt-4o-mini",
-        "input_price":  0.15,
-        "output_price": 0.60,
-        "cache_price":  0.075,
     },
     "deepseek-v3": {
         "provider":     "deepseek",
         "model_id":     "deepseek-chat",
-        "input_price":  0.28,
-        "output_price": 0.42,
-        "cache_price":  0.028,
     },
 }
+
+
+# ── Rotación de API keys ──────────────────────────────────────────────────────
+def _load_keys(env_plural: str, env_single: str) -> list[str]:
+    """Carga múltiples keys desde env (comma-separated) o una sola key."""
+    multi = os.getenv(env_plural, "")
+    if multi:
+        return [k.strip() for k in multi.split(",") if k.strip()]
+    single = os.getenv(env_single, "")
+    return [single] if single else []
+
+
+_google_keys   = _load_keys("GOOGLE_API_KEYS",   "GOOGLE_API_KEY")
+_deepseek_keys = _load_keys("DEEPSEEK_API_KEYS", "DEEPSEEK_API_KEY")
+
+_google_cycle   = itertools.cycle(_google_keys)   if _google_keys   else None
+_deepseek_cycle = itertools.cycle(_deepseek_keys) if _deepseek_keys else None
+
+
+def get_next_api_key(provider: str) -> str:
+    """Retorna la siguiente API key disponible (round-robin)."""
+    if provider == "google"   and _google_cycle:
+        return next(_google_cycle)
+    if provider == "deepseek" and _deepseek_cycle:
+        return next(_deepseek_cycle)
+    return ""
 
 
 def get_model_config(ia_asignada: str) -> dict:
@@ -35,16 +58,15 @@ def get_model_config(ia_asignada: str) -> dict:
     return config
 
 
+# ── Dispatcher principal ──────────────────────────────────────────────────────
 async def call_ai(
-    messages: list,        # historial previo [{role: "user"|"assistant", content: str}]
-    user_message: str,     # mensaje nuevo del docente
+    messages: list,        # historial [{role: "user"|"assistant", content: str}]
+    user_message: str,
     ia_asignada: str,
     system_prompt: str,
 ) -> dict:
     """
-    Llama al proveedor de IA correcto según ia_asignada.
-
-    Retorna:
+    Llama al proveedor correcto y retorna:
         {
             "content":       str,
             "tokens_input":  int,
@@ -52,14 +74,15 @@ async def call_ai(
             "tokens_cache":  int,
         }
     """
-    config = get_model_config(ia_asignada)
+    config   = get_model_config(ia_asignada)
     provider = config["provider"]
+    api_key  = get_next_api_key(provider)
 
     if provider == "google":
-        return await _call_gemini(messages, user_message, system_prompt, config["model_id"])
+        return await _call_gemini(messages, user_message, system_prompt, config["model_id"], api_key)
 
-    elif provider in ("openai", "deepseek"):
-        return await _call_openai_compatible(messages, user_message, system_prompt, config, provider)
+    if provider == "deepseek":
+        return await _call_openai_compatible(messages, user_message, system_prompt, config, api_key)
 
     raise ValueError(f"Proveedor no soportado: '{provider}'")
 
@@ -70,13 +93,13 @@ async def _call_gemini(
     user_message: str,
     system_prompt: str,
     model_id: str,
+    api_key: str,
 ) -> dict:
-    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+    genai.configure(api_key=api_key)
 
-    # Convertir historial al formato Gemini: role "user"/"model"
     history = [
         {
-            "role": "user" if m["role"] == "user" else "model",
+            "role":  "user" if m["role"] == "user" else "model",
             "parts": [m["content"]],
         }
         for m in messages
@@ -87,13 +110,12 @@ async def _call_gemini(
         system_instruction=system_prompt,
     )
     chat_session = model.start_chat(history=history)
-    response = chat_session.send_message(user_message)
+    response     = chat_session.send_message(user_message)
 
-    # Extraer tokens del usage_metadata
-    usage = response.usage_metadata
-    tokens_input  = getattr(usage, "prompt_token_count", 0) or 0
-    tokens_output = getattr(usage, "candidates_token_count", 0) or 0
-    tokens_cache  = getattr(usage, "cached_content_token_count", 0) or 0
+    usage         = response.usage_metadata
+    tokens_input  = getattr(usage, "prompt_token_count",           0) or 0
+    tokens_output = getattr(usage, "candidates_token_count",        0) or 0
+    tokens_cache  = getattr(usage, "cached_content_token_count",    0) or 0
 
     return {
         "content":       response.text.strip(),
@@ -103,29 +125,22 @@ async def _call_gemini(
     }
 
 
-# ── OpenAI / DeepSeek (mismo formato) ────────────────────────────────────────
+# ── DeepSeek (formato OpenAI compatible) ─────────────────────────────────────
 async def _call_openai_compatible(
     messages: list,
     user_message: str,
     system_prompt: str,
     config: dict,
-    provider: str,
+    api_key: str,
 ) -> dict:
-    if provider == "deepseek":
-        client = AsyncOpenAI(
-            api_key=os.getenv("DEEPSEEK_API_KEY"),
-            base_url="https://api.deepseek.com",
-        )
-    else:
-        client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = AsyncOpenAI(
+        api_key=api_key,
+        base_url="https://api.deepseek.com",
+    )
 
-    # Construir lista completa de mensajes en formato OpenAI
     openai_messages = [{"role": "system", "content": system_prompt}]
     for m in messages:
-        openai_messages.append({
-            "role":    m["role"],           # "user" | "assistant"
-            "content": m["content"],
-        })
+        openai_messages.append({"role": m["role"], "content": m["content"]})
     openai_messages.append({"role": "user", "content": user_message})
 
     response = await client.chat.completions.create(
@@ -133,12 +148,13 @@ async def _call_openai_compatible(
         messages=openai_messages,
     )
 
-    usage = response.usage
-    tokens_input  = usage.prompt_tokens if usage else 0
-    tokens_output = usage.completion_tokens if usage else 0
-    # cached_tokens disponible en prompt_tokens_details (OpenAI o1 / gpt-4o)
-    tokens_cache = 0
-    if usage and hasattr(usage, "prompt_tokens_details") and usage.prompt_tokens_details:
+    usage         = response.usage
+    tokens_input  = usage.prompt_tokens            if usage else 0
+    tokens_output = usage.completion_tokens        if usage else 0
+    tokens_cache  = 0
+    if usage and hasattr(usage, "prompt_cache_hit_tokens"):
+        tokens_cache = getattr(usage, "prompt_cache_hit_tokens", 0) or 0
+    elif usage and hasattr(usage, "prompt_tokens_details") and usage.prompt_tokens_details:
         tokens_cache = getattr(usage.prompt_tokens_details, "cached_tokens", 0) or 0
 
     return {

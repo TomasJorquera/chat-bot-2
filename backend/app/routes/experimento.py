@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session
 from ..database import SessionLocal
 from ..models import Alumno, Interaccion
 from ..schemas import InteraccionCreate, MensajeRequest, FinalizarRequest
-from ..prompts import PROMPTS
 from ..utils.ai_router import call_ai
-from ..utils.cost_tracker import calculate_cost
+from ..utils.cost_tracker import calculate_cost, cost_summary
+from ..utils.prompt_builder import get_system_prompt
 from .deps import get_db, get_current_alumno
 
 router = APIRouter()
@@ -20,7 +20,9 @@ def iniciar_interaccion(
     alumno: Alumno = Depends(get_current_alumno),
     db: Session = Depends(get_db),
 ):
-    if payload.personaje not in PROMPTS:
+    try:
+        get_system_prompt(payload.personaje)
+    except ValueError:
         raise HTTPException(status_code=400, detail=f"Personaje '{payload.personaje}' no existe.")
 
     interaccion = Interaccion(
@@ -34,8 +36,8 @@ def iniciar_interaccion(
     db.refresh(interaccion)
 
     return {
-        "interaccion_id":       interaccion.id,
-        "personajes_disponibles": list(k for k in PROMPTS if k != "Evaluator"),
+        "interaccion_id":        interaccion.id,
+        "personajes_disponibles": ["Teo", "Jojo"],
     }
 
 
@@ -55,8 +57,9 @@ async def enviar_mensaje(
     if not interaccion:
         raise HTTPException(status_code=404, detail="Interacción no encontrada o ya finalizada.")
 
-    prompt_base = PROMPTS.get(payload.personaje)
-    if not prompt_base:
+    try:
+        prompt_base = get_system_prompt(payload.personaje)
+    except ValueError:
         raise HTTPException(status_code=400, detail=f"Personaje '{payload.personaje}' no existe.")
 
     # Llamada al modelo asignado al alumno (ciego: él no sabe cuál es)
@@ -82,10 +85,25 @@ async def enviar_mensaje(
     )
     db.commit()
 
-    # Nunca exponer ia_asignada en la respuesta
+    # Costo de este request
+    request_cost = calculate_cost(
+        ia_asignada   = alumno.ia_asignada,
+        tokens_input  = result["tokens_input"],
+        tokens_output = result["tokens_output"],
+        tokens_cache  = result["tokens_cache"],
+    )
+
+    # Nunca exponer ia_asignada en la respuesta → experimento ciego
     return {
-        "respuesta":  result["content"],
-        "personaje":  payload.personaje,
+        "respuesta": result["content"],
+        "personaje": payload.personaje,
+        "cost": {
+            "request_cost":         round(request_cost, 8),
+            "conversation_total":   float(interaccion.costo_total_usd),
+            "tokens_input":         result["tokens_input"],
+            "tokens_output":        result["tokens_output"],
+            "tokens_cache":         result["tokens_cache"],
+        },
     }
 
 

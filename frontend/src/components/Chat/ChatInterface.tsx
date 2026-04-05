@@ -255,6 +255,23 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ character, onBack }) => {
       puntaje = count;
     }
 
+    // Guardar puntaje y fecha fin AHORA (antes del preview)
+    // Así queda registrado aunque el docente cierre el modal sin confirmar
+    if (interaccionId) {
+      try {
+        await fetch(`${API_URL}/experimento/finalizar`, {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({
+            interaccion_id: interaccionId,
+            puntaje_evaluador: puntaje ?? 0,
+          }),
+        });
+      } catch (err) {
+        console.error('[CHAT] No se pudo registrar el puntaje:', err);
+      }
+    }
+
     setPreviewData({ evaluation: evaluationArray, conclusion: conclusionArray, conversation: conversationToSave, puntaje: puntaje ?? 0 });
     setShowPreview(true);
     setIsEvaluating(false);
@@ -264,6 +281,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ character, onBack }) => {
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-[#E3F2FD] via-[#BBDEFB] to-[#90CAF9]">
+
+      {/* Overlay de evaluación */}
+      {isEvaluating && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center space-y-6 p-10 bg-white rounded-2xl shadow-xl max-w-sm w-full mx-4">
+            {/* Spinner */}
+            <div className="relative w-20 h-20">
+              <div className="absolute inset-0 rounded-full border-4 border-blue-100" />
+              <div className="absolute inset-0 rounded-full border-4 border-[#1E88E5] border-t-transparent animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center text-3xl">
+                {info.emoji}
+              </div>
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-lg font-semibold text-[#0D47A1]">Evaluando tu interacción</p>
+              <p className="text-sm text-[#37474F]">Analizando los criterios pedagógicos...</p>
+            </div>
+            {/* Barra de progreso animada */}
+            <div className="w-full h-1.5 bg-blue-100 rounded-full overflow-hidden">
+              <div className="h-full bg-[#1E88E5] rounded-full animate-pulse" style={{ width: '70%' }} />
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white/90 backdrop-blur-sm border-b border-blue-200 px-4 py-4 mt-16">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
@@ -370,6 +411,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ character, onBack }) => {
           evaluationError={evaluationError}
           onClose={() => setShowPreview(false)}
           onConfirm={async (pdfBase64: string) => {
+            // Actualiza el registro existente agregando el PDF
             if (interaccionId) {
               try {
                 await fetch(`${API_URL}/experimento/finalizar`, {
@@ -382,11 +424,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ character, onBack }) => {
                   }),
                 });
               } catch (err) {
-                console.error('[CHAT] No se pudo guardar el PDF en DB:', err);
+                console.error('[CHAT] No se pudo guardar el PDF:', err);
               }
             }
             setShowPreview(false);
-            onBack();
+            setInteraccionId(null);
+            setMessages([]);
+            setEvaluationError(null);
+            await startNewSession();
           }}
         />
       )}

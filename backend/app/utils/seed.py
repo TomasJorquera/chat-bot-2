@@ -27,18 +27,17 @@ DEFAULT_PASSWORD = os.getenv("SEED_PASSWORD_DEFAULT", "password123")
 
 # Distribución ciega: el grupo visible NO revela el modelo
 DOCENTES = [
-    # Grupo A → gemini-flash-lite
+    # Grupo A → gemini-2.5-flash-lite (5 docentes)
     {"correo": "docente_01@correo.uss.cl", "grupo": "A", "ia_asignada": "gemini-flash-lite"},
     {"correo": "docente_02@correo.uss.cl", "grupo": "A", "ia_asignada": "gemini-flash-lite"},
     {"correo": "docente_03@correo.uss.cl", "grupo": "A", "ia_asignada": "gemini-flash-lite"},
-    # Grupo B → gpt-nano
-    {"correo": "docente_04@correo.uss.cl", "grupo": "B", "ia_asignada": "gpt-nano"},
-    {"correo": "docente_05@correo.uss.cl", "grupo": "B", "ia_asignada": "gpt-nano"},
-    {"correo": "docente_06@correo.uss.cl", "grupo": "B", "ia_asignada": "gpt-nano"},
-    # Grupo C → deepseek-v3
-    {"correo": "docente_07@correo.uss.cl", "grupo": "C", "ia_asignada": "deepseek-v3"},
-    {"correo": "docente_08@correo.uss.cl", "grupo": "C", "ia_asignada": "deepseek-v3"},
-    {"correo": "docente_09@correo.uss.cl", "grupo": "C", "ia_asignada": "deepseek-v3"},
+    {"correo": "docente_04@correo.uss.cl", "grupo": "A", "ia_asignada": "gemini-flash-lite"},
+    {"correo": "docente_05@correo.uss.cl", "grupo": "A", "ia_asignada": "gemini-flash-lite"},
+    # Grupo B → deepseek-v3 (4 docentes)
+    {"correo": "docente_06@correo.uss.cl", "grupo": "B", "ia_asignada": "deepseek-v3"},
+    {"correo": "docente_07@correo.uss.cl", "grupo": "B", "ia_asignada": "deepseek-v3"},
+    {"correo": "docente_08@correo.uss.cl", "grupo": "B", "ia_asignada": "deepseek-v3"},
+    {"correo": "docente_09@correo.uss.cl", "grupo": "B", "ia_asignada": "deepseek-v3"},
 ]
 
 
