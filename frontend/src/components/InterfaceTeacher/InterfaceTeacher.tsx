@@ -71,7 +71,88 @@ const mockStudents: Record<number, { id: number; rut: string; name: string; emai
   ],
 };
 
-type ViewType = 'dashboard' | 'students' | 'chat';
+type ViewType = 'dashboard' | 'students' | 'chat' | 'ramo';
+type RamoTab = 'contenido' | 'anuncios' | 'calificaciones' | 'participantes' | 'mensajes';
+
+const mockModules: Record<number, {
+  id: number; title: string; pinned?: boolean; items: {
+    id: number; type: 'simulacion' | 'tarea' | 'recurso' | 'anuncio';
+    title: string; description: string; status?: string; dueDate?: string;
+    character?: 'Teo' | 'Jojo'; completions?: number; total?: number;
+  }[]
+}[]> = {
+  1: [
+    {
+      id: 1, title: 'Información General', pinned: true,
+      items: [
+        { id: 1, type: 'recurso', title: 'Programa del curso', description: 'Objetivos, metodología y evaluaciones del semestre.', status: 'Publicado' },
+        { id: 2, type: 'anuncio', title: 'Bienvenida al ramo', description: 'Estimados estudiantes: bienvenidos a Educación Diferencial semestre 2025-1.', status: 'Publicado' },
+      ],
+    },
+    {
+      id: 2, title: 'Simulaciones con IA',
+      items: [
+        { id: 3, type: 'simulacion', title: 'Simulación con Teo', description: 'Practica estrategias pedagógicas con Teo, estudiante con DEA (F81.0).', character: 'Teo', completions: 14, total: 24, status: 'Activo' },
+        { id: 4, type: 'simulacion', title: 'Simulación con Jojo', description: 'Interactúa con Jojo, estudiante con Discapacidad Intelectual Leve.', character: 'Jojo', completions: 9, total: 24, status: 'Activo' },
+      ],
+    },
+    {
+      id: 3, title: 'Tareas y Evaluaciones',
+      items: [
+        { id: 5, type: 'tarea', title: 'Informe reflexivo N°1', description: 'Redacta un informe reflexivo sobre tu experiencia de simulación con Teo.', dueDate: '2025-04-14', status: 'Pendiente' },
+        { id: 6, type: 'tarea', title: 'Portfolio pedagógico', description: 'Compila tus evaluaciones y estrategias aplicadas durante el semestre.', dueDate: '2025-06-30', status: 'Pendiente' },
+      ],
+    },
+    {
+      id: 4, title: 'Recursos y Material de Apoyo',
+      items: [
+        { id: 7, type: 'recurso', title: 'Manual DSM-5: Trastornos del aprendizaje', description: 'Criterios diagnósticos y orientaciones pedagógicas.', status: 'Publicado' },
+        { id: 8, type: 'recurso', title: 'Guía de adaptaciones curriculares', description: 'Estrategias diferenciadas para el aula inclusiva.', status: 'Publicado' },
+      ],
+    },
+  ],
+  2: [
+    {
+      id: 1, title: 'Información General', pinned: true,
+      items: [
+        { id: 1, type: 'recurso', title: 'Programa del curso', description: 'Objetivos, metodología y evaluaciones del semestre.', status: 'Publicado' },
+      ],
+    },
+    {
+      id: 2, title: 'Simulaciones con IA',
+      items: [
+        { id: 2, type: 'simulacion', title: 'Simulación con Teo', description: 'Practica estrategias pedagógicas con Teo, estudiante con DEA (F81.0).', character: 'Teo', completions: 7, total: 18, status: 'Activo' },
+      ],
+    },
+    {
+      id: 3, title: 'Tareas y Evaluaciones',
+      items: [
+        { id: 3, type: 'tarea', title: 'Diagnóstico psicopedagógico', description: 'Elabora un diagnóstico a partir de los datos entregados en clases.', dueDate: '2025-04-21', status: 'Pendiente' },
+      ],
+    },
+  ],
+  3: [
+    {
+      id: 1, title: 'Información General', pinned: true,
+      items: [
+        { id: 1, type: 'recurso', title: 'Programa del curso', description: 'Objetivos, metodología y evaluaciones del semestre.', status: 'Publicado' },
+      ],
+    },
+    {
+      id: 2, title: 'Simulaciones con IA',
+      items: [
+        { id: 2, type: 'simulacion', title: 'Simulación con Teo', description: 'Practica estrategias pedagógicas con Teo, estudiante con DEA (F81.0).', character: 'Teo', completions: 11, total: 20, status: 'Activo' },
+        { id: 3, type: 'simulacion', title: 'Simulación con Jojo', description: 'Interactúa con Jojo, estudiante con Discapacidad Intelectual Leve.', character: 'Jojo', completions: 6, total: 20, status: 'Activo' },
+      ],
+    },
+    {
+      id: 3, title: 'Tareas y Evaluaciones',
+      items: [
+        { id: 4, type: 'tarea', title: 'Plan de intervención temprana', description: 'Diseña un plan de intervención para un caso asignado.', dueDate: '2025-05-05', status: 'Pendiente' },
+      ],
+    },
+  ],
+};
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 const Sidebar: React.FC<{
@@ -81,8 +162,8 @@ const Sidebar: React.FC<{
   onLogout: () => void;
 }> = ({ view, setView, user, onLogout }) => {
   const nav = [
-    { id: 'dashboard' as ViewType, label: 'Dashboard',   icon: '⊞' },
-    { id: 'students'  as ViewType, label: 'Mis Alumnos', icon: '👥' },
+    { id: 'dashboard' as ViewType, label: 'Dashboard',   icon: '⊞', activeFor: ['dashboard', 'ramo'] },
+    { id: 'students'  as ViewType, label: 'Mis Alumnos', icon: '👥', activeFor: ['students'] },
   ];
   const initials = user?.name?.[0] + (user?.lastName?.[0] ?? '');
 
@@ -105,23 +186,26 @@ const Sidebar: React.FC<{
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: '12px 10px' }}>
-        {nav.map(item => (
+        {nav.map(item => {
+          const isActive = item.activeFor.includes(view);
+          return (
           <button key={item.id} onClick={() => setView(item.id)}
             style={{
               width: '100%', textAlign: 'left', padding: '11px 14px',
               borderRadius: 8, border: 'none', cursor: 'pointer',
-              background: view === item.id ? 'rgba(192,57,43,0.18)' : 'transparent',
-              color: view === item.id ? C.white : C.gray400,
+              background: isActive ? 'rgba(192,57,43,0.18)' : 'transparent',
+              color: isActive ? C.white : C.gray400,
               display: 'flex', alignItems: 'center', gap: 10,
               fontSize: 14, fontFamily: "'Georgia', serif",
-              fontWeight: view === item.id ? 700 : 400,
+              fontWeight: isActive ? 700 : 400,
               marginBottom: 4, transition: 'all 0.15s',
-              borderLeft: view === item.id ? `3px solid ${C.red}` : '3px solid transparent',
+              borderLeft: isActive ? `3px solid ${C.red}` : '3px solid transparent',
             }}>
             <span style={{ fontSize: 16 }}>{item.icon}</span>
             {item.label}
           </button>
-        ))}
+          );
+        })}
       </nav>
 
       {/* User + logout */}
@@ -157,35 +241,577 @@ const Sidebar: React.FC<{
 };
 
 // ── Top Header ────────────────────────────────────────────────────────────────
-const PageHeader: React.FC<{ title: string; subtitle?: string }> = ({ title, subtitle }) => (
-  <div style={{
-    background: C.white, borderBottom: `1px solid ${C.gray200}`,
-    padding: '18px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  }}>
-    <div>
-      <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.navyDark, fontFamily: "'Georgia', serif" }}>{title}</h1>
-      {subtitle && <p style={{ margin: '3px 0 0', fontSize: 13, color: C.gray400 }}>{subtitle}</p>}
-    </div>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <span style={{ fontSize: 12, color: C.gray400, fontFamily: "'Georgia', serif" }}>Semestre 2025-1</span>
-      <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 0 3px rgba(34,197,94,0.2)' }} />
+const PageHeader: React.FC<{ title: string; subtitle?: string; userName?: string }> = ({ title, subtitle, userName }) => (
+  <div>
+    {userName && (
+      <div style={{
+        background: `linear-gradient(135deg, ${C.navyDark} 0%, ${C.navyLight} 100%)`,
+        padding: '16px 32px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div>
+          <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.55)', fontFamily: "'Georgia', serif" }}>
+            Bienvenido a la plataforma educativa <strong style={{ color: C.gold }}>CHAT-BOT</strong>
+          </p>
+          <p style={{ margin: '2px 0 0', fontSize: 20, fontWeight: 800, color: C.white, fontFamily: "'Georgia', serif" }}>
+            {userName}
+          </p>
+        </div>
+        <div style={{ background: 'rgba(255,255,255,0.97)', borderRadius: 10, padding: '8px 14px' }}>
+          <img src="/LogoUniversidadSanSebastian.jpg" alt="USS"
+            style={{ height: 36, width: 'auto', objectFit: 'contain', display: 'block' }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).parentElement!.style.display = 'none'; }}
+          />
+        </div>
+      </div>
+    )}
+    <div style={{
+      background: C.white, borderBottom: `1px solid ${C.gray200}`,
+      padding: '18px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    }}>
+      <div>
+        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: C.navyDark, fontFamily: "'Georgia', serif" }}>{title}</h1>
+        {subtitle && <p style={{ margin: '3px 0 0', fontSize: 13, color: C.gray400 }}>{subtitle}</p>}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 12, color: C.gray400, fontFamily: "'Georgia', serif" }}>Semestre 2025-1</span>
+        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 0 3px rgba(34,197,94,0.2)' }} />
+      </div>
     </div>
   </div>
 );
+
+// ── Ramo View ─────────────────────────────────────────────────────────────────
+const typeConfig = {
+  simulacion: { icon: '🤖', label: 'Simulación', bg: '#ede9fe', color: '#7c3aed', border: '#c4b5fd' },
+  tarea:      { icon: '📝', label: 'Tarea',       bg: '#fef3c7', color: '#b45309', border: '#fcd34d' },
+  recurso:    { icon: '📄', label: 'Recurso',     bg: '#dbeafe', color: '#1d4ed8', border: '#93c5fd' },
+  anuncio:    { icon: '📢', label: 'Anuncio',     bg: '#dcfce7', color: '#15803d', border: '#86efac' },
+};
+
+type EditableItemType = 'anuncio' | 'recurso' | 'tarea';
+
+interface ModalState {
+  open: boolean;
+  moduleId: number | null;
+  editItemId?: number;
+}
+
+const emptyForm = { type: 'anuncio' as EditableItemType, title: '', description: '', dueDate: '' };
+
+const RamoView: React.FC<{
+  ramoId: number;
+  onBack: () => void;
+  onStartSimulation: (c: 'Teo' | 'Jojo') => void;
+  user: any;
+}> = ({ ramoId, onBack, onStartSimulation, user }) => {
+  const [activeTab, setActiveTab] = useState<RamoTab>('contenido');
+  const ramo = mockRamos.find(r => r.id === ramoId)!;
+  const [modules, setModules] = useState(() =>
+    JSON.parse(JSON.stringify(mockModules[ramoId] ?? []))
+  );
+  const [modal, setModal] = useState<ModalState>({ open: false, moduleId: null });
+  const [form, setForm] = useState(emptyForm);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ moduleId: number; itemId: number } | null>(null);
+
+  const tabs: { id: RamoTab; label: string }[] = [
+    { id: 'contenido',      label: 'Contenido' },
+    { id: 'anuncios',       label: 'Anuncios' },
+    { id: 'calificaciones', label: 'Calificaciones' },
+    { id: 'participantes',  label: 'Participantes' },
+    { id: 'mensajes',       label: 'Mensajes' },
+  ];
+
+  const allItems = modules.flatMap((m: any) => m.items);
+  const totalSims   = allItems.filter((i: any) => i.type === 'simulacion').length;
+  const totalTareas = allItems.filter((i: any) => i.type === 'tarea').length;
+
+  // ── CRUD helpers ──────────────────────────────────────────────────────────
+  const openCreate = (moduleId: number) => {
+    setForm(emptyForm);
+    setModal({ open: true, moduleId, editItemId: undefined });
+  };
+  const openEdit = (moduleId: number, item: any) => {
+    setForm({ type: item.type, title: item.title, description: item.description, dueDate: item.dueDate ?? '' });
+    setModal({ open: true, moduleId, editItemId: item.id });
+  };
+  const closeModal = () => setModal({ open: false, moduleId: null });
+
+  const saveItem = () => {
+    if (!form.title.trim()) return;
+    setModules((prev: any[]) => prev.map((mod: any) => {
+      if (mod.id !== modal.moduleId) return mod;
+      if (modal.editItemId !== undefined) {
+        // edit
+        return { ...mod, items: mod.items.map((it: any) => it.id === modal.editItemId
+          ? { ...it, ...form, dueDate: form.dueDate || undefined }
+          : it
+        )};
+      } else {
+        // create
+        const newItem = {
+          id: Date.now(), type: form.type, title: form.title,
+          description: form.description, status: 'Pendiente de publicación',
+          dueDate: form.dueDate || undefined,
+        };
+        return { ...mod, items: [...mod.items, newItem] };
+      }
+    }));
+    closeModal();
+  };
+
+  const deleteItem = (moduleId: number, itemId: number) => {
+    setModules((prev: any[]) => prev.map((mod: any) =>
+      mod.id === moduleId ? { ...mod, items: mod.items.filter((it: any) => it.id !== itemId) } : mod
+    ));
+    setDeleteConfirm(null);
+  };
+
+  const toggleStatus = (moduleId: number, itemId: number) => {
+    setModules((prev: any[]) => prev.map((mod: any) =>
+      mod.id === moduleId ? {
+        ...mod, items: mod.items.map((it: any) => {
+          if (it.id !== itemId || it.type === 'simulacion') return it;
+          const next = it.status === 'Publicado' ? 'Borrador' : 'Publicado';
+          return { ...it, status: next };
+        })
+      } : mod
+    ));
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', borderRadius: 8,
+    border: `1px solid ${C.gray200}`, fontSize: 13,
+    fontFamily: "'Georgia', serif", color: C.navyDark,
+    outline: 'none', boxSizing: 'border-box', background: C.white,
+  };
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: C.gray50, minHeight: '100vh' }}>
+
+      {/* ── Modal overlay ── */}
+      {modal.open && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.45)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }} onClick={closeModal}>
+          <div style={{
+            background: C.white, borderRadius: 16, width: 520, maxWidth: '92vw',
+            boxShadow: '0 24px 60px rgba(0,0,0,0.25)', overflow: 'hidden',
+          }} onClick={e => e.stopPropagation()}>
+            {/* Modal header */}
+            <div style={{ padding: '18px 24px', background: C.navyDark, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: C.white, fontFamily: "'Georgia', serif" }}>
+                {modal.editItemId !== undefined ? 'Editar elemento' : 'Agregar nuevo elemento'}
+              </span>
+              <button onClick={closeModal} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: 20, lineHeight: 1 }}>×</button>
+            </div>
+            {/* Modal body */}
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Type selector (only on create) */}
+              {modal.editItemId === undefined && (
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 8 }}>Tipo de elemento</label>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {(['anuncio', 'recurso', 'tarea'] as EditableItemType[]).map(t => {
+                      const cfg = typeConfig[t];
+                      return (
+                        <button key={t} onClick={() => setForm(f => ({ ...f, type: t }))}
+                          style={{
+                            flex: 1, padding: '10px 8px', borderRadius: 10, cursor: 'pointer', border: `2px solid`,
+                            borderColor: form.type === t ? cfg.color : C.gray200,
+                            background: form.type === t ? cfg.bg : C.white,
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, transition: 'all 0.15s',
+                          }}>
+                          <span style={{ fontSize: 20 }}>{cfg.icon}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: form.type === t ? cfg.color : C.gray400 }}>{cfg.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {/* Title */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 6 }}>Título *</label>
+                <input style={inputStyle} placeholder="Escribe un título..." value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+              </div>
+              {/* Description */}
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 6 }}>Descripción</label>
+                <textarea style={{ ...inputStyle, minHeight: 90, resize: 'vertical' }}
+                  placeholder="Descripción o instrucciones para los estudiantes..."
+                  value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+              </div>
+              {/* Due date (only for tasks) */}
+              {form.type === 'tarea' && (
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 6 }}>Fecha de entrega</label>
+                  <input type="date" style={inputStyle} value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
+                </div>
+              )}
+              {/* File upload placeholder for recurso */}
+              {form.type === 'recurso' && (
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 6 }}>Archivo adjunto</label>
+                  <div style={{
+                    border: `2px dashed ${C.gray200}`, borderRadius: 10, padding: '20px',
+                    textAlign: 'center', cursor: 'pointer', color: C.gray400,
+                    fontFamily: "'Georgia', serif", fontSize: 13,
+                  }}>
+                    <div style={{ fontSize: 28, marginBottom: 6 }}>📎</div>
+                    Haz clic para subir un archivo (PDF, DOC, PPT...)
+                    <div style={{ fontSize: 11, marginTop: 4, color: C.gray200 }}>Máx. 50 MB</div>
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Modal footer */}
+            <div style={{ padding: '16px 24px', borderTop: `1px solid ${C.gray100}`, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button onClick={closeModal}
+                style={{ padding: '9px 20px', borderRadius: 8, border: `1px solid ${C.gray200}`, background: C.white, color: C.gray600, cursor: 'pointer', fontSize: 13, fontFamily: "'Georgia', serif" }}>
+                Cancelar
+              </button>
+              <button onClick={saveItem}
+                style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: C.navy, color: C.white, cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: "'Georgia', serif", opacity: form.title.trim() ? 1 : 0.5 }}>
+                {modal.editItemId !== undefined ? 'Guardar cambios' : 'Agregar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete confirm ── */}
+      {deleteConfirm && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setDeleteConfirm(null)}>
+          <div style={{ background: C.white, borderRadius: 14, padding: '28px', width: 360, boxShadow: '0 16px 40px rgba(0,0,0,0.2)', textAlign: 'center' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>🗑️</div>
+            <p style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 700, color: C.navyDark, fontFamily: "'Georgia', serif" }}>¿Eliminar este elemento?</p>
+            <p style={{ margin: '0 0 20px', fontSize: 13, color: C.gray400 }}>Esta acción no se puede deshacer.</p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button onClick={() => setDeleteConfirm(null)}
+                style={{ padding: '9px 22px', borderRadius: 8, border: `1px solid ${C.gray200}`, background: C.white, color: C.gray600, cursor: 'pointer', fontSize: 13, fontFamily: "'Georgia', serif" }}>
+                Cancelar
+              </button>
+              <button onClick={() => deleteItem(deleteConfirm.moduleId, deleteConfirm.itemId)}
+                style={{ padding: '9px 22px', borderRadius: 8, border: 'none', background: C.red, color: C.white, cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: "'Georgia', serif" }}>
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Hero header ── */}
+      <div style={{ background: `linear-gradient(160deg, ${C.navyDark} 0%, #0f2a5e 60%, #1a3a7a 100%)`, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', right: -60, top: -60, width: 280, height: 280, borderRadius: '50%', background: 'rgba(255,255,255,0.03)' }} />
+        <div style={{ position: 'absolute', right: 80, top: 20, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+
+        <div style={{ padding: '14px 32px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.55)', fontSize: 13, fontFamily: "'Georgia', serif", padding: 0 }}>
+            ← Cursos
+          </button>
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>•</span>
+          <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, fontFamily: "'Georgia', serif" }}>{ramo.code}</span>
+        </div>
+
+        <div style={{ padding: '12px 32px 0', textAlign: 'center' }}>
+          <h2 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: C.white, letterSpacing: 2, fontFamily: "'Georgia', serif", textTransform: 'uppercase' }}>
+            Universidad San Sebastián
+          </h2>
+        </div>
+
+        <div style={{ padding: '14px 32px 22px' }}>
+          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontFamily: "'Georgia', serif", letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>{ramo.code}</div>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: C.white, fontFamily: "'Georgia', serif" }}>{ramo.name}</h1>
+          <div style={{ marginTop: 10, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            {[
+              { icon: '👥', text: `${ramo.students} estudiantes` },
+              { icon: '🗓️', text: ramo.schedule },
+              { icon: '📍', text: ramo.room },
+              { icon: '📅', text: 'Semestre 2025-1' },
+            ].map(({ icon, text }) => (
+              <span key={text} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: "'Georgia', serif", display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span>{icon}</span>{text}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', paddingLeft: 32, borderTop: '1px solid rgba(255,255,255,0.1)', gap: 2 }}>
+          {tabs.map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '12px 20px', background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 13, fontFamily: "'Georgia', serif", fontWeight: activeTab === tab.id ? 700 : 400,
+                color: activeTab === tab.id ? C.white : 'rgba(255,255,255,0.5)',
+                borderBottom: activeTab === tab.id ? `3px solid ${C.gold}` : '3px solid transparent',
+                transition: 'all 0.15s',
+              }}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Contenido tab ── */}
+      {activeTab === 'contenido' && (
+        <div style={{ display: 'flex', gap: 28, padding: '28px 32px', flex: 1, alignItems: 'flex-start' }}>
+
+          {/* Main column */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {modules.map((mod: any) => (
+              <div key={mod.id} style={{ marginBottom: 20, background: C.white, borderRadius: 14, boxShadow: '0 2px 12px rgba(26,39,68,0.06)', overflow: 'hidden' }}>
+                {/* Module header */}
+                <div style={{ padding: '14px 20px', background: mod.pinned ? C.navyDark : C.navy, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {mod.pinned && <span style={{ fontSize: 14 }}>📌</span>}
+                    <span style={{ fontSize: 15, fontWeight: 700, color: C.white, fontFamily: "'Georgia', serif" }}>{mod.title}</span>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: "'Georgia', serif" }}>{mod.items.length} elemento{mod.items.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  {/* "+ Agregar" button per module */}
+                  <button onClick={() => openCreate(mod.id)}
+                    style={{
+                      padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.25)',
+                      background: 'rgba(255,255,255,0.1)', color: C.white, cursor: 'pointer',
+                      fontSize: 12, fontWeight: 700, fontFamily: "'Georgia', serif",
+                      display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.2)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255,255,255,0.1)'}
+                  >
+                    + Agregar
+                  </button>
+                </div>
+
+                {/* Items */}
+                <div>
+                  {mod.items.map((item: any, idx: number) => {
+                    const cfg = typeConfig[item.type as keyof typeof typeConfig];
+                    return (
+                      <div key={item.id}
+                        className="teacher-item-row"
+                        style={{
+                          padding: '16px 20px', borderBottom: idx < mod.items.length - 1 ? `1px solid ${C.gray100}` : 'none',
+                          display: 'flex', alignItems: 'flex-start', gap: 14, transition: 'background 0.1s', position: 'relative',
+                        }}
+                        onMouseEnter={e => {
+                          (e.currentTarget as HTMLDivElement).style.background = C.gray50;
+                          const btns = (e.currentTarget as HTMLDivElement).querySelectorAll<HTMLElement>('.item-actions');
+                          btns.forEach(b => b.style.opacity = '1');
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLDivElement).style.background = C.white;
+                          const btns = (e.currentTarget as HTMLDivElement).querySelectorAll<HTMLElement>('.item-actions');
+                          btns.forEach(b => b.style.opacity = '0');
+                        }}
+                      >
+                        <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: cfg.bg, border: `1px solid ${cfg.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{cfg.icon}</div>
+
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: C.navyDark, fontFamily: "'Georgia', serif" }}>{item.title}</span>
+                            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: cfg.bg, color: cfg.color, fontWeight: 700 }}>{cfg.label}</span>
+                            {item.status && (
+                              <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20,
+                                background: item.status === 'Activo' || item.status === 'Publicado' ? '#dcfce7' : '#fef3c7',
+                                color: item.status === 'Activo' || item.status === 'Publicado' ? '#15803d' : '#b45309',
+                                fontWeight: 700,
+                              }}>{item.status}</span>
+                            )}
+                          </div>
+                          <p style={{ margin: '4px 0 0', fontSize: 13, color: C.gray400, lineHeight: 1.5 }}>{item.description}</p>
+
+                          {item.type === 'simulacion' && item.completions !== undefined && (
+                            <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{ flex: 1, height: 6, background: C.gray100, borderRadius: 99, overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${(item.completions / item.total) * 100}%`, background: cfg.color, borderRadius: 99 }} />
+                              </div>
+                              <span style={{ fontSize: 11, color: C.gray400, whiteSpace: 'nowrap' }}>{item.completions} de {item.total} completados</span>
+                            </div>
+                          )}
+                          {item.dueDate && (
+                            <div style={{ marginTop: 6, fontSize: 11, color: C.gray400, display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <span>📅</span> Entrega: {new Date(item.dueDate + 'T12:00:00').toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions column */}
+                        <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                          {/* Always-visible action for simulations */}
+                          {item.type === 'simulacion' && item.character && (
+                            <button onClick={() => onStartSimulation(item.character)}
+                              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', background: cfg.color, color: C.white, fontSize: 12, fontWeight: 700, fontFamily: "'Georgia', serif" }}>
+                              Probar ▶
+                            </button>
+                          )}
+                          {/* Edit/delete/publish — appear on hover */}
+                          {item.type !== 'simulacion' && (
+                            <div className="item-actions" style={{ display: 'flex', gap: 6, opacity: 0, transition: 'opacity 0.15s' }}>
+                              <button onClick={() => toggleStatus(mod.id, item.id)}
+                                style={{
+                                  padding: '6px 12px', borderRadius: 7, border: `1px solid ${C.gray200}`,
+                                  background: C.white, cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                                  color: item.status === 'Publicado' ? '#b45309' : '#15803d',
+                                  fontFamily: "'Georgia', serif",
+                                }}>
+                                {item.status === 'Publicado' ? 'Despublicar' : 'Publicar'}
+                              </button>
+                              <button onClick={() => openEdit(mod.id, item)}
+                                style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid ${C.gray200}`, background: C.white, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                title="Editar">✏️</button>
+                              <button onClick={() => setDeleteConfirm({ moduleId: mod.id, itemId: item.id })}
+                                style={{ width: 30, height: 30, borderRadius: 7, border: `1px solid #fee2e2`, background: '#fff5f5', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                title="Eliminar">🗑️</button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {/* Empty state per module */}
+                  {mod.items.length === 0 && (
+                    <div style={{ padding: '24px', textAlign: 'center', color: C.gray400, fontFamily: "'Georgia', serif", fontSize: 13 }}>
+                      No hay elementos. <button onClick={() => openCreate(mod.id)} style={{ background: 'none', border: 'none', color: C.navy, cursor: 'pointer', fontWeight: 700, fontFamily: "'Georgia', serif", fontSize: 13 }}>+ Agregar uno</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Sidebar */}
+          <div style={{ width: 280, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+            {/* Quick create */}
+            <div style={{ background: C.white, borderRadius: 14, boxShadow: '0 2px 12px rgba(26,39,68,0.06)', overflow: 'hidden' }}>
+              <div style={{ padding: '12px 16px', background: C.navyDark }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)', fontFamily: "'Georgia', serif", textTransform: 'uppercase', letterSpacing: 1 }}>Publicar contenido</span>
+              </div>
+              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {([
+                  { type: 'anuncio', label: 'Nuevo anuncio', icon: '📢', desc: 'Avisos para tus estudiantes' },
+                  { type: 'recurso', label: 'Subir material', icon: '📄', desc: 'PDF, presentaciones, guías' },
+                  { type: 'tarea',   label: 'Crear tarea',   icon: '📝', desc: 'Asignación con fecha límite' },
+                ] as { type: EditableItemType; label: string; icon: string; desc: string }[]).map(action => (
+                  <button key={action.type}
+                    onClick={() => {
+                      setForm({ ...emptyForm, type: action.type });
+                      setModal({ open: true, moduleId: modules[0]?.id ?? null });
+                    }}
+                    style={{
+                      width: '100%', padding: '10px 14px', borderRadius: 10,
+                      border: `1px solid ${typeConfig[action.type].border}`,
+                      background: typeConfig[action.type].bg,
+                      color: typeConfig[action.type].color, cursor: 'pointer',
+                      fontSize: 13, fontWeight: 700, fontFamily: "'Georgia', serif",
+                      display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.filter = 'brightness(0.95)'}
+                    onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.filter = 'brightness(1)'}
+                  >
+                    <span style={{ fontSize: 18 }}>{action.icon}</span>
+                    <div>
+                      <div>{action.label}</div>
+                      <div style={{ fontSize: 10, fontWeight: 400, marginTop: 1 }}>{action.desc}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Docente */}
+            <div style={{ background: C.white, borderRadius: 14, boxShadow: '0 2px 12px rgba(26,39,68,0.06)', overflow: 'hidden' }}>
+              <div style={{ padding: '12px 16px', background: C.navyDark }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)', fontFamily: "'Georgia', serif", textTransform: 'uppercase', letterSpacing: 1 }}>Docente del curso</span>
+              </div>
+              <div style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 44, height: 44, borderRadius: '50%', background: `linear-gradient(135deg, ${C.red}, ${C.navy})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 700, color: C.white, flexShrink: 0 }}>
+                  {(user?.name?.[0] ?? '') + (user?.lastName?.[0] ?? '')}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.navyDark, fontFamily: "'Georgia', serif" }}>{user?.name} {user?.lastName}</div>
+                  <div style={{ fontSize: 11, color: C.gold, marginTop: 2, fontWeight: 700 }}>USS DOCENTE</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div style={{ background: C.white, borderRadius: 14, boxShadow: '0 2px 12px rgba(26,39,68,0.06)', overflow: 'hidden' }}>
+              <div style={{ padding: '12px 16px', background: C.navyDark }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)', fontFamily: "'Georgia', serif", textTransform: 'uppercase', letterSpacing: 1 }}>Resumen del ramo</span>
+              </div>
+              <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[
+                  { icon: '👥', label: 'Estudiantes',      value: `${ramo.students}` },
+                  { icon: '💬', label: 'Sesiones',         value: `${ramo.sessions}` },
+                  { icon: '📄', label: 'Reportes',         value: `${ramo.reports}`  },
+                  { icon: '🤖', label: 'Simulaciones',     value: `${totalSims}`      },
+                  { icon: '📝', label: 'Tareas publicadas',value: `${totalTareas}`    },
+                ].map(d => (
+                  <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 16, flexShrink: 0 }}>{d.icon}</span>
+                    <div>
+                      <div style={{ fontSize: 10, color: C.gray400, textTransform: 'uppercase', letterSpacing: 0.8 }}>{d.label}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: C.navyDark, fontFamily: "'Georgia', serif" }}>{d.value}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Simular */}
+            <div style={{ background: C.white, borderRadius: 14, boxShadow: '0 2px 12px rgba(26,39,68,0.06)', overflow: 'hidden' }}>
+              <div style={{ padding: '12px 16px', background: C.navyDark }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)', fontFamily: "'Georgia', serif", textTransform: 'uppercase', letterSpacing: 1 }}>Probar simulaciones</span>
+              </div>
+              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {ramo.chatbots.map((bot: any) => (
+                  <button key={bot.name} onClick={() => onStartSimulation(bot.name)}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: `1px solid ${ramo.color}30`, background: `${ramo.color}08`, color: ramo.color, cursor: 'pointer', fontSize: 13, fontWeight: 700, fontFamily: "'Georgia', serif", display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = `${ramo.color}18`}
+                    onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = `${ramo.color}08`}
+                  >
+                    <span style={{ fontSize: 16 }}>{bot.emoji}</span> Simular con {bot.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Placeholder tabs */}
+      {activeTab !== 'contenido' && (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: C.gray400 }}>
+          <span style={{ fontSize: 48 }}>🚧</span>
+          <p style={{ margin: 0, fontSize: 15, fontFamily: "'Georgia', serif", fontWeight: 700, color: C.gray600 }}>Próximamente</p>
+          <p style={{ margin: 0, fontSize: 13, fontFamily: "'Georgia', serif" }}>Esta sección estará disponible en futuras versiones.</p>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 const Dashboard: React.FC<{
   setView: (v: ViewType) => void;
   setSelectedRamo: (id: number) => void;
   setSelectedCharacter: (c: 'Teo' | 'Jojo') => void;
-}> = ({ setView, setSelectedRamo, setSelectedCharacter }) => {
+  userName?: string;
+}> = ({ setView, setSelectedRamo, setSelectedCharacter, userName }) => {
   const totalStudents = mockRamos.reduce((s, r) => s + r.students, 0);
   const totalSessions = mockRamos.reduce((s, r) => s + r.sessions, 0);
   const totalReports  = mockRamos.reduce((s, r) => s + r.reports,  0);
 
   return (
     <div style={{ flex: 1, background: C.gray50 }}>
-      <PageHeader title="Panel del docente" subtitle="Plataforma de simulación pedagógica USS" />
+      <PageHeader title="Panel del docente" subtitle="Plataforma de simulación pedagógica USS" userName={userName} />
 
       <div style={{ padding: 32 }}>
         {/* Stats */}
@@ -257,19 +883,34 @@ const Dashboard: React.FC<{
                 <div style={{ fontSize: 22, fontWeight: 800, color: ramo.color, fontFamily: "'Georgia', serif" }}>{ramo.students}</div>
                 <div style={{ fontSize: 11, color: C.gray400 }}>alumnos</div>
               </div>
-              <button
-                onClick={() => { setSelectedRamo(ramo.id); setView('students'); }}
-                style={{
-                  padding: '8px 16px', borderRadius: 8, border: `1px solid ${C.gray200}`,
-                  background: C.white, color: C.navy, cursor: 'pointer',
-                  fontSize: 12, fontWeight: 700, fontFamily: "'Georgia', serif",
-                  transition: 'all 0.15s', flexShrink: 0,
-                }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = C.navy; (e.currentTarget as HTMLButtonElement).style.color = C.white; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = C.white; (e.currentTarget as HTMLButtonElement).style.color = C.navy; }}
-              >
-                Ver alumnos
-              </button>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                <button
+                  onClick={() => { setSelectedRamo(ramo.id); setView('students'); }}
+                  style={{
+                    padding: '8px 16px', borderRadius: 8, border: `1px solid ${C.gray200}`,
+                    background: C.white, color: C.navy, cursor: 'pointer',
+                    fontSize: 12, fontWeight: 700, fontFamily: "'Georgia', serif",
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = C.gray100; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = C.white; }}
+                >
+                  👥 Alumnos
+                </button>
+                <button
+                  onClick={() => { setSelectedRamo(ramo.id); setView('ramo'); }}
+                  style={{
+                    padding: '8px 16px', borderRadius: 8, border: 'none',
+                    background: C.navy, color: C.white, cursor: 'pointer',
+                    fontSize: 12, fontWeight: 700, fontFamily: "'Georgia', serif",
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = C.navyLight; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = C.navy; }}
+                >
+                  Ver ramo →
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -417,10 +1058,19 @@ const InterfaceTeacher: React.FC = () => {
             setView={setView}
             setSelectedRamo={setSelectedRamo}
             setSelectedCharacter={setSelectedCharacter}
+            userName={user ? `${user.name} ${user.lastName}` : undefined}
           />
         )}
         {view === 'students' && (
           <StudentsView selectedRamo={selectedRamo} setSelectedRamo={setSelectedRamo} />
+        )}
+        {view === 'ramo' && selectedRamo && (
+          <RamoView
+            ramoId={selectedRamo}
+            onBack={() => setView('dashboard')}
+            onStartSimulation={(c) => setSelectedCharacter(c)}
+            user={user}
+          />
         )}
       </div>
     </div>
