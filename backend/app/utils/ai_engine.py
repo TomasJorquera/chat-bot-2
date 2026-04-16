@@ -9,7 +9,7 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 async def generate_gemini_response(prompt, conversation):
     """Genera una respuesta usando el modelo Gemini para evaluar una conversación."""
     try:
-        model = genai.GenerativeModel(model_name="gemini-2.5-flash")
+        model = genai.GenerativeModel(model_name="gemini-2.5-flash-lite")
 
         # Combina el prompt con la conversación
         prompt_completo = prompt + "\n\n" + json.dumps(conversation, indent=2)
@@ -17,49 +17,42 @@ async def generate_gemini_response(prompt, conversation):
         # Genera la respuesta
         response = model.generate_content(prompt_completo)
 
+        import re
+
         # Normalizar texto de la respuesta
         text = (response.text or "").strip()
 
-        # Intentos robustos para extraer JSON válido cuando el modelo añade texto
-        import re
+        # 1) Limpiar fences de markdown antes de parsear
+        #    Cubre: ```json\n...\n``` o ```\n...\n``` al inicio/fin del texto
+        clean = text
+        if clean.startswith("```"):
+            clean = re.sub(r"^```(?:json)?\r?\n?", "", clean)
+            clean = re.sub(r"\r?\n?```$", "", clean).strip()
 
-        # 1) Intentar parsear JSON tal cual
+        # 2) Intentar parsear el texto limpio directamente
         try:
-            return json.loads(text)
+            return json.loads(clean)
         except Exception:
             pass
 
-        # 2) Buscar un bloque encerrado en fences de Markdown (```json ... ```)
-        fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text, re.IGNORECASE)
-        if fence_match:
-            candidate = fence_match.group(1).strip()
-            try:
-                return json.loads(candidate)
-            except Exception as e:
-                print(f"[AI_ENGINE] Error parsing JSON inside code fence: {e}")
-
-        # 3) Eliminar posibles backticks y etiquetas como 'json' al inicio y volver a intentar
-        cleaned = re.sub(r"`+", "", text)
-        cleaned = re.sub(r"^\s*json\s*[:\-]*\s*", "", cleaned, flags=re.IGNORECASE)
-
-        # 4) Extraer la primera ocurrencia de un objeto {...} o un array [...] del texto limpio
-        obj_match = re.search(r"\{[\s\S]*\}", cleaned)
-        arr_match = re.search(r"\[[\s\S]*\]", cleaned)
-        candidate = None
+        # 3) Buscar el primer objeto JSON {...} en el texto completo
+        obj_match = re.search(r"\{[\s\S]*\}", clean)
         if obj_match:
-            candidate = obj_match.group(0)
-        elif arr_match:
-            candidate = arr_match.group(0)
-
-        if candidate:
             try:
-                return json.loads(candidate)
+                return json.loads(obj_match.group(0))
             except Exception as e:
-                print(f"[AI_ENGINE] Error parsing extracted JSON candidate: {e}")
+                print(f"[AI_ENGINE] Error parsing extracted JSON object: {e}")
 
-        # Si no pudimos parsear, logueamos la respuesta cruda y lanzamos excepción
-        print(f"[AI_ENGINE] Error al generar evaluación: respuesta no es JSON válido. Respuesta cruda:\n{text}")
-        raise Exception(f"AI response not valid JSON: {text[:1000]}")
+        # 4) Buscar primer array JSON [...] como fallback
+        arr_match = re.search(r"\[[\s\S]*\]", clean)
+        if arr_match:
+            try:
+                return json.loads(arr_match.group(0))
+            except Exception as e:
+                print(f"[AI_ENGINE] Error parsing extracted JSON array: {e}")
+
+        print(f"[AI_ENGINE] Respuesta no parseable:\n{text[:500]}")
+        raise Exception(f"AI response not valid JSON: {text[:500]}")
     except Exception as e:
         print(f"[AI_ENGINE] Error al generar evaluación: {e}")
         raise e
