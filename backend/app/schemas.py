@@ -50,6 +50,35 @@ class InteraccionUpdate(BaseModel):
     pdf_url: Optional[str] = None
 
 
+# ── Simulacion ───────────────────────────────────────────────────────────────
+from datetime import date as Date
+
+class SimulacionCreate(BaseModel):
+    correo_docente: str
+    ramo_codigo: str
+    nombre: str
+    instrucciones: str
+    objetivos: str
+    agente: str                    # "Teo" | "Jojo" | "Ambos"
+    num_interacciones: int = 2
+    fecha_inicio: Date
+    fecha_termino: Date
+    pauta_tipo: str = "general"    # "general" | "personalizada"
+    pauta_criterios: Optional[str] = None  # JSON string
+
+class IniciarEntregaRequest(BaseModel):
+    correo_alumno: str
+    agente_usado: str              # "Teo" | "Jojo"
+
+class MensajeEntregaRequest(BaseModel):
+    personaje: str
+    mensaje: str
+    history: list                  # [{role, content}]
+
+class FinalizarEntregaRequest(BaseModel):
+    correo_alumno: str
+    messages: list                 # [{sender, content}] para evaluación
+
 # ── Admin ─────────────────────────────────────────────────────────────────────
 class AlumnoOut(BaseModel):
     id: int

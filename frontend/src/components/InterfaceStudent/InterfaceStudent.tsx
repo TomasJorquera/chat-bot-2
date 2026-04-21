@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import ChatInterface from '../Chat/ChatInterface';
+import SimulacionFlow, { SimulacionData } from '../SimulacionFlow/SimulacionFlow';
 
 // ── USS Design Tokens ─────────────────────────────────────────────────────────
 const C = {
@@ -263,16 +264,61 @@ const PageHeader: React.FC<{ title: string; subtitle?: string; userName?: string
   </div>
 );
 
+const API = ((import.meta as any).env?.VITE_API_URL) || 'http://localhost:8000';
+
 // ── Student Ramo View ─────────────────────────────────────────────────────────
 const StudentRamoView: React.FC<{
   ramoId: number;
   onBack: () => void;
   onStartChat: (c: 'Teo' | 'Jojo') => void;
-  user: any;
-}> = ({ ramoId, onBack, onStartChat, user }) => {
+  onStartSimulacion: (sim: SimulacionData) => void;
+}> = ({ ramoId, onBack, onStartChat, onStartSimulacion }) => {
   const [activeTab, setActiveTab] = useState<RamoTab>('contenido');
   const ramo = mockRamos.find(r => r.id === ramoId)!;
-  const modules = mockStudentModules[ramoId] ?? [];
+  const [realSimulaciones, setRealSimulaciones] = useState<SimulacionData[]>([]);
+
+  // Fetch real simulations (with full details) from backend for this ramo
+  useEffect(() => {
+    fetch(`${API}/simulacion/ramo/${ramo.code}`)
+      .then(r => r.json())
+      .then(async (list: any[]) => {
+        const full = await Promise.all(
+          list.map(s => fetch(`${API}/simulacion/${s.id}`).then(r => r.json()))
+        );
+        setRealSimulaciones(full.map(s => ({
+          id: s.id,
+          title: s.nombre,
+          instrucciones: s.instrucciones ?? '',
+          objetivos: s.objetivos ?? '',
+          agente: s.agente as 'Teo' | 'Jojo' | 'Ambos',
+          numInteracciones: s.num_interacciones,
+          pautaTipo: s.pauta_tipo,
+          ramo: { code: ramo.code, name: ramo.name },
+        })));
+      })
+      .catch(() => { /* use mock fallback silently */ });
+  }, [ramo.code, ramo.name]);
+
+  // Build modules: replace mock simulacion items with real ones from backend when available
+  const baseModules = mockStudentModules[ramoId] ?? [];
+  const modules = realSimulaciones.length > 0
+    ? baseModules.map(mod => {
+        if (!mod.title.includes('Simulaci')) return mod;
+        return {
+          ...mod,
+          items: realSimulaciones.map(sim => ({
+            id: sim.id!,
+            type: 'simulacion' as const,
+            title: sim.title,
+            description: `Interactúa con ${sim.agente}. ${sim.numInteracciones} interacción${sim.numInteracciones > 1 ? 'es' : ''} en esta simulación.`,
+            character: (sim.agente === 'Ambos' ? 'Teo' : sim.agente) as 'Teo' | 'Jojo',
+            myStatus: 'pendiente' as StudentItemStatus,
+            dueDate: undefined as string | undefined,
+            grade: undefined as number | undefined,
+          })),
+        };
+      })
+    : baseModules;
 
   const allItems = modules.flatMap(m => m.items);
   const completed  = allItems.filter(i => i.myStatus === 'completado' || i.myStatus === 'entregado' || i.myStatus === 'visto').length;
@@ -431,7 +477,18 @@ const StudentRamoView: React.FC<{
                       {/* Action */}
                       <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
                         {item.type === 'simulacion' && item.character && (
-                          <button onClick={() => onStartChat(item.character!)}
+                          <button onClick={() => {
+                            const realSim = realSimulaciones.find(s => s.id === item.id);
+                            onStartSimulacion(realSim ?? {
+                              title: item.title,
+                              instrucciones: item.description,
+                              objetivos: '— Aplicar estrategias pedagógicas diferenciadas\n— Identificar barreras de aprendizaje\n— Desarrollar un vínculo pedagógico empático',
+                              agente: item.character!,
+                              numInteracciones: 2,
+                              pautaTipo: 'general',
+                              ramo: { code: ramo.code, name: ramo.name },
+                            });
+                          }}
                             style={{
                               padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
                               background: item.myStatus === 'completado' ? C.gray200 : cfg.color,
@@ -591,7 +648,7 @@ const StudentRamoView: React.FC<{
                 </tr>
               </thead>
               <tbody>
-                {modules.flatMap(m => m.items).filter(i => i.type === 'tarea').map((item, i) => (
+                {modules.flatMap(m => m.items).filter(i => i.type === 'tarea').map((item) => (
                   <tr key={item.id} style={{ borderBottom: `1px solid ${C.gray100}` }}
                     onMouseEnter={e => (e.currentTarget as HTMLTableRowElement).style.background = C.gray50}
                     onMouseLeave={e => (e.currentTarget as HTMLTableRowElement).style.background = C.white}
@@ -783,10 +840,23 @@ const ScheduleView: React.FC = () => (
 // ── Main ──────────────────────────────────────────────────────────────────────
 const InterfaceStudent: React.FC = () => {
   const { user, logout } = useAuth();
-  const [view, setView] = useState<ViewType>('my-courses');
-  const [selectedRamo, setSelectedRamo] = useState<number | null>(null);
+  const [view, setView]                     = useState<ViewType>('my-courses');
+  const [selectedRamo, setSelectedRamo]     = useState<number | null>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<'Teo' | 'Jojo' | null>(null);
+  const [activeSimulacion, setActiveSimulacion]   = useState<SimulacionData | null>(null);
 
+  // Flujo de simulación — pantalla completa (overlay)
+  if (activeSimulacion) {
+    return (
+      <SimulacionFlow
+        simulacion={activeSimulacion}
+        onClose={() => setActiveSimulacion(null)}
+        userEmail={user?.email ?? undefined}
+      />
+    );
+  }
+
+  // Chat libre (acceso rápido desde dashboard)
   if (selectedCharacter) {
     return (
       <ChatInterface
@@ -813,7 +883,7 @@ const InterfaceStudent: React.FC = () => {
             ramoId={selectedRamo}
             onBack={() => setView('my-courses')}
             onStartChat={setSelectedCharacter}
-            user={user}
+            onStartSimulacion={setActiveSimulacion}
           />
         )}
       </div>

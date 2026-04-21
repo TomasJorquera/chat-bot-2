@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from ..database import SessionLocal
 from ..models import Message # Este import ya no es estrictamente necesario para el endpoint /chat
-from ..utils.ai_engine import iniciar_chat_con_historial
+from ..utils.ai_engine import iniciar_chat_con_historial, chat_deepseek_message
 from ..prompts import PROMPTS
 
 router = APIRouter()
@@ -34,10 +34,8 @@ async def chat(chat_request: ChatRequest, db: Session = Depends(get_db)):
         
         historial_frontend = chat_request.history
 
-        # 2. Iniciar una sesión de chat con el historial y enviar el último mensaje
-        chat_session = iniciar_chat_con_historial(prompt_base, historial_frontend)
-        response = chat_session.send_message(user_message)
-        respuesta = response.text.strip()
+        # 2. Enviar mensaje al agente usando DeepSeek
+        respuesta = await chat_deepseek_message(prompt_base, historial_frontend, user_message)
         print(f"[CHAT] Respuesta enviada: {respuesta}")  # Depuración
 
         # 3. Guardar el nuevo intercambio en la base de datos

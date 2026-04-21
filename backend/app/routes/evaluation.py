@@ -16,7 +16,7 @@ class EvaluationRequest(BaseModel):
     character: str
 
 class EvaluationCriteria(BaseModel):
-    number: int
+    number: Optional[int] = None
     name: str
     description: str
     compliance: str
@@ -68,11 +68,29 @@ async def evaluate_conversation(request: EvaluationRequest):
         if isinstance(resp, dict):
             # Caso 1: respuesta ya en campo 'criteria'
             if 'criteria' in resp and isinstance(resp['criteria'], list):
-                criteria_list = resp['criteria']
+                # Añadir 'number' si falta
+                raw_criteria = resp['criteria']
+                for idx, item in enumerate(raw_criteria, start=1):
+                    if isinstance(item, dict) and 'number' not in item:
+                        item['number'] = idx
+                criteria_list = raw_criteria
                 total_score = resp.get('total_score')
                 performance_range = resp.get('performance_range')
-                # conclusion puede ser string
-                conclusion_text = resp.get('conclusion') or ''
+                # conclusion puede ser string o lista de {title, text}
+                concl = resp.get('conclusion')
+                if isinstance(concl, list):
+                    import re
+                    parts = []
+                    for item in concl:
+                        if isinstance(item, dict) and 'title' in item and 'text' in item:
+                            parts.append(f"**{item['title']}**: {item['text']}")
+                            if 'Puntuación' in item.get('title', ''):
+                                m = re.search(r"(\d+)\s+de\s+11", item.get('text', ''))
+                                if m and total_score is None:
+                                    total_score = int(m.group(1))
+                    conclusion_text = '\n\n'.join(parts)
+                else:
+                    conclusion_text = concl or ''
 
             # Caso 2: el prompt devolvió 'evaluation' y 'conclusion' como listas
             elif 'evaluation' in resp and isinstance(resp['evaluation'], list):

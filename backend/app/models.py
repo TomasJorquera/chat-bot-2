@@ -86,7 +86,8 @@ class Entrega(Base):
     alumno_id          = Column(Integer, ForeignKey("alumnos.id"), nullable=False)
     num_interaccion    = Column(Integer, nullable=False)                  # 1, 2, 3…
     agente_usado       = Column(String(10), nullable=False)               # "Teo"|"Jojo"
-    planificacion      = Column(Text, nullable=True)                      # sube el alumno antes de chatear
+    planificacion      = Column(Text, nullable=True)                      # texto libre antes de chatear
+    planificacion_archivo_url = Column(Text, nullable=True)             # ruta del archivo subido (Word/PDF)
     estado             = Column(String(20), nullable=False,
                                 default="en_progreso")                    # "en_progreso"|"completada"
     puntaje            = Column(Integer, nullable=True)                   # null hasta finalizar

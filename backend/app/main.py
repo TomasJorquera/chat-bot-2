@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 
-from .routes import chat, evaluation, auth, experimento, admin
+from .routes import chat, evaluation, auth, experimento, admin, simulacion
 from .database import engine, Base
 
 # Crea todas las tablas (existentes + nuevas) al iniciar
@@ -37,3 +39,9 @@ app.include_router(evaluation.router, tags=["Evaluation"])
 app.include_router(auth.router,        prefix="/auth",        tags=["Auth"])
 app.include_router(experimento.router, prefix="/experimento", tags=["Experimento"])
 app.include_router(admin.router,       prefix="/admin",       tags=["Admin"])
+app.include_router(simulacion.router,  prefix="/simulacion",  tags=["Simulacion"])
+
+# ── Archivos estáticos (planificaciones subidas por alumnos) ──────────────────
+uploads_dir = "uploads"
+os.makedirs(uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")

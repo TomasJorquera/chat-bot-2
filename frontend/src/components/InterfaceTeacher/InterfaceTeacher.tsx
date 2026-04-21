@@ -1,6 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { useAuth } from '../../context/AuthContext';
 import ChatInterface from '../Chat/ChatInterface';
+
+const API = ((import.meta as any).env?.VITE_API_URL) || 'http://localhost:8000';
+
+function normalizeEvaluation(raw: any): any {
+  if (!raw || typeof raw !== 'object') return raw;
+  let { criteria, conclusion, total_score, performance_range } = raw;
+  if (!criteria && Array.isArray(raw.evaluation)) {
+    criteria = raw.evaluation.map((item: any, idx: number) => ({
+      name: item.criterio || item.name || `Criterio ${idx + 1}`,
+      description: item.descripcion || item.description || '',
+      compliance: item.cumplimiento || item.compliance || 'NO',
+      analysis: item.analisis || item.analysis || '',
+      justification: item.justificacion || item.justification || '',
+    }));
+  }
+  if (Array.isArray(conclusion)) {
+    conclusion = conclusion.map((item: any) =>
+      item && typeof item === 'object' && item.title ? `**${item.title}**: ${item.text || ''}` : String(item)
+    ).join('\n\n');
+  }
+  if (total_score == null && Array.isArray(criteria)) {
+    total_score = criteria.filter((c: any) => (c.compliance || c.cumplimiento || '').toUpperCase() === 'SÍ').length;
+  }
+  if (!performance_range && total_score != null) {
+    performance_range = total_score >= 8 ? 'Exitosa' : total_score >= 5 ? 'Competente' : 'Aceptable';
+  }
+  return { ...raw, criteria, conclusion, total_score, performance_range };
+}
+
+function parseConclusionSections(conclusion: string): { title: string; text: string }[] {
+  if (!conclusion || typeof conclusion !== 'string') return [];
+  const sections: { title: string; text: string }[] = [];
+  for (const part of conclusion.split(/\n\n+/)) {
+    const m = part.match(/^\*\*(.+?)\*\*:\s*([\s\S]*)$/);
+    if (m) sections.push({ title: m[1].trim(), text: m[2].trim() });
+    else if (part.trim()) sections.push({ title: '', text: part.trim() });
+  }
+  return sections;
+}
 
 // ── USS Design Tokens ─────────────────────────────────────────────────────────
 const C = {
@@ -72,7 +113,7 @@ const mockStudents: Record<number, { id: number; rut: string; name: string; emai
 };
 
 type ViewType = 'dashboard' | 'students' | 'chat' | 'ramo';
-type RamoTab = 'contenido' | 'anuncios' | 'calificaciones' | 'participantes' | 'mensajes';
+type RamoTab = 'contenido' | 'anuncios' | 'calificaciones' | 'participantes' | 'mensajes' | 'resultados';
 
 const mockModules: Record<number, {
   id: number; title: string; pinned?: boolean; items: {
@@ -299,28 +340,583 @@ interface ModalState {
 
 const emptyForm = { type: 'anuncio' as EditableItemType, title: '', description: '', dueDate: '' };
 
+// ── Criterios generales por defecto ──────────────────────────────────────────
+const CRITERIOS_GENERALES = [
+  'Lenguaje adecuado al nivel del estudiante',
+  'Estrategias de apoyo pedagógico',
+  'Adaptación al perfil del alumno',
+  'Uso de refuerzo positivo',
+  'Manejo del ritmo de aprendizaje',
+  'Claridad en las instrucciones',
+  'Fomento de la autonomía del estudiante',
+  'Empatía y vínculo pedagógico',
+  'Evaluación formativa durante la interacción',
+  'Coherencia con los objetivos planteados',
+  'Cierre y síntesis de la sesión',
+];
+
+const defaultCriterios = () => [
+  { id: 1, nombre: '', descripcion: '' },
+  { id: 2, nombre: '', descripcion: '' },
+  { id: 3, nombre: '', descripcion: '' },
+];
+
+// ── Modal Crear Simulación — pantalla completa (wizard 3 pasos) ───────────────
+const SimulacionModal: React.FC<{
+  ramo: any;
+  correoDocente: string;
+  onClose: () => void;
+  onSave: (sim: any) => void;
+}> = ({ ramo, correoDocente, onClose, onSave }) => {
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState({
+    nombre: '',
+    agente: 'Teo' as 'Teo' | 'Jojo' | 'Ambos',
+    numInteracciones: 2,
+    fechaInicio: '',
+    fechaTermino: '',
+    instrucciones: '',
+    objetivos: '',
+    pautaTipo: 'general' as 'general' | 'personalizada',
+    criterios: defaultCriterios(),
+  });
+
+  const set = (key: string, val: any) => setForm(f => ({ ...f, [key]: val }));
+
+  const canNext = () => {
+    if (step === 1) return form.nombre.trim() !== '' && form.fechaInicio !== '' && form.fechaTermino !== '';
+    if (step === 2) return form.instrucciones.trim() !== '' && form.objetivos.trim() !== '';
+    return true;
+  };
+
+  const handleSave = async () => {
+    // Persist to backend
+    try {
+      const res = await fetch(`${API}/simulacion/crear`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          correo_docente:   correoDocente,
+          ramo_codigo:      ramo.code,
+          nombre:           form.nombre,
+          instrucciones:    form.instrucciones,
+          objetivos:        form.objetivos,
+          agente:           form.agente,
+          num_interacciones: form.numInteracciones,
+          fecha_inicio:     form.fechaInicio,
+          fecha_termino:    form.fechaTermino,
+          pauta_tipo:       form.pautaTipo,
+          pauta_criterios:  form.pautaTipo === 'personalizada' ? form.criterios : null,
+        }),
+      });
+      const data = res.ok ? await res.json() : null;
+      const simId = data?.simulacion_id ?? Date.now();
+
+      const sim = {
+        id: simId,
+        type: 'simulacion' as const,
+        title: form.nombre,
+        description: form.instrucciones,
+        status: 'Activo',
+        agente: form.agente,
+        numInteracciones: form.numInteracciones,
+        completions: 0,
+        total: ramo.students,
+      };
+      onSave(sim);
+    } catch {
+      // Non-blocking: still add locally even if backend fails
+      onSave({
+        id: Date.now(), type: 'simulacion' as const,
+        title: form.nombre, description: form.instrucciones,
+        status: 'Activo', agente: form.agente,
+        numInteracciones: form.numInteracciones,
+        completions: 0, total: ramo.students,
+      });
+    }
+    onClose();
+  };
+
+  const addCriterio = () => {
+    if (form.criterios.length >= 15) return;
+    setForm(f => ({ ...f, criterios: [...f.criterios, { id: Date.now(), nombre: '', descripcion: '' }] }));
+  };
+  const removeCriterio = (id: number) => {
+    if (form.criterios.length <= 1) return;
+    setForm(f => ({ ...f, criterios: f.criterios.filter(c => c.id !== id) }));
+  };
+  const updateCriterio = (id: number, key: string, val: any) => {
+    setForm(f => ({ ...f, criterios: f.criterios.map(c => c.id === id ? { ...c, [key]: val } : c) }));
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 14px', borderRadius: 8,
+    border: `1px solid ${C.gray200}`, fontSize: 14,
+    fontFamily: "'Georgia', serif", color: C.navyDark,
+    outline: 'none', boxSizing: 'border-box', background: C.white,
+  };
+
+  const steps = [
+    { label: 'Configuración', icon: '⚙️', desc: 'Nombre, agente y fechas' },
+    { label: 'Instrucciones', icon: '📝', desc: 'Contenido visible al alumno' },
+    { label: 'Pauta', icon: '📋', desc: 'Criterios de evaluación' },
+  ];
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', flexDirection: 'column', background: C.white }}>
+
+      {/* ── Top bar ── */}
+      <div style={{ background: C.navyDark, padding: '0 32px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <button onClick={onClose}
+            style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: C.white, cursor: 'pointer', width: 36, height: 36, borderRadius: 8, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            title="Cerrar">←</button>
+          <div>
+            <p style={{ margin: 0, fontSize: 11, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: 1, fontFamily: "'Georgia', serif" }}>
+              {ramo.code} · {ramo.name}
+            </p>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: C.white, fontFamily: "'Georgia', serif" }}>
+              Nueva simulación IA
+            </h2>
+          </div>
+        </div>
+        <button onClick={onClose}
+          style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: 24, lineHeight: 1, padding: 4 }}>×</button>
+      </div>
+
+      {/* ── Main layout: sidebar + content ── */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+
+        {/* Left sidebar — step nav */}
+        <div style={{ width: 260, background: '#f8f9fc', borderRight: `1px solid ${C.gray200}`, padding: '32px 20px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ margin: '0 0 16px', fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1.2, paddingLeft: 12 }}>Pasos</p>
+          {steps.map((s, i) => {
+            const num = i + 1;
+            const done = num < step;
+            const active = num === step;
+            return (
+              <div key={s.label}
+                onClick={() => done && setStep(num)}
+                style={{
+                  padding: '14px 16px', borderRadius: 12, cursor: done ? 'pointer' : 'default',
+                  background: active ? C.navyDark : done ? `${C.navy}08` : 'transparent',
+                  border: `1.5px solid ${active ? C.navyDark : done ? `${C.navy}20` : C.gray200}`,
+                  display: 'flex', alignItems: 'center', gap: 14, transition: 'all 0.15s',
+                }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                  background: done ? C.gold : active ? C.white : C.gray200,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: done ? 14 : 13, fontWeight: 800,
+                  color: done ? C.navyDark : active ? C.navyDark : C.gray400,
+                }}>
+                  {done ? '✓' : num}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, fontFamily: "'Georgia', serif", color: active ? C.white : done ? C.navy : C.gray600 }}>
+                    {s.label}
+                  </div>
+                  <div style={{ fontSize: 11, color: active ? 'rgba(255,255,255,0.55)' : C.gray400, marginTop: 2 }}>
+                    {s.desc}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Resumen lateral */}
+          {form.nombre && (
+            <div style={{ marginTop: 24, padding: '14px 16px', background: C.white, borderRadius: 12, border: `1px solid ${C.gray200}` }}>
+              <p style={{ margin: '0 0 8px', fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1 }}>Resumen</p>
+              <p style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 700, color: C.navyDark, fontFamily: "'Georgia', serif" }}>{form.nombre}</p>
+              {form.agente && <p style={{ margin: '0 0 2px', fontSize: 12, color: C.gray600 }}>Agente: {form.agente}</p>}
+              {form.fechaInicio && <p style={{ margin: 0, fontSize: 11, color: C.gray400 }}>{form.fechaInicio} → {form.fechaTermino || '…'}</p>}
+            </div>
+          )}
+        </div>
+
+        {/* Right — scrollable form content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '40px 56px', maxWidth: 860 }}>
+
+          {/* ── STEP 1: Configuración ── */}
+          {step === 1 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, color: C.navyDark, fontFamily: "'Georgia', serif" }}>Configuración general</h3>
+                <p style={{ margin: 0, fontSize: 14, color: C.gray400 }}>Define el nombre, agente y duración de la simulación.</p>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 8 }}>
+                  Nombre de la simulación *
+                </label>
+                <input style={{ ...inputStyle, fontSize: 16 }} placeholder="Ej: Simulación diagnóstica N°1 — Teo" value={form.nombre} onChange={e => set('nombre', e.target.value)} />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 12 }}>
+                  Agente(s) asignado(s) *
+                </label>
+                <div style={{ display: 'flex', gap: 16 }}>
+                  {(['Teo', 'Jojo', 'Ambos'] as const).map(a => (
+                    <button key={a} onClick={() => set('agente', a)}
+                      style={{
+                        flex: 1, padding: '20px 12px', borderRadius: 14, cursor: 'pointer',
+                        border: `2px solid ${form.agente === a ? C.navy : C.gray200}`,
+                        background: form.agente === a ? `${C.navy}0d` : C.white,
+                        transition: 'all 0.15s',
+                      }}>
+                      <div style={{ fontSize: 36, marginBottom: 8 }}>
+                        {a === 'Teo' ? '🧒' : a === 'Jojo' ? '👧' : '🧒👧'}
+                      </div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: form.agente === a ? C.navy : C.gray400, fontFamily: "'Georgia', serif" }}>{a}</div>
+                      <div style={{ fontSize: 11, color: C.gray400, marginTop: 4 }}>
+                        {a === 'Teo' ? 'DEA · 9 años · 3° básico' : a === 'Jojo' ? 'DIL · 15 años' : 'Ambos agentes'}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 12 }}>
+                  Número de interacciones *
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'fit-content', border: `1px solid ${C.gray200}`, borderRadius: 12, overflow: 'hidden' }}>
+                  <button onClick={() => set('numInteracciones', Math.max(1, form.numInteracciones - 1))}
+                    style={{ width: 52, height: 52, border: 'none', background: C.gray50, cursor: 'pointer', fontSize: 22, color: C.gray600, fontWeight: 700 }}>−</button>
+                  <div style={{ width: 72, textAlign: 'center', fontSize: 24, fontWeight: 800, color: C.navyDark, fontFamily: "'Georgia', serif" }}>
+                    {form.numInteracciones}
+                  </div>
+                  <button onClick={() => set('numInteracciones', Math.min(5, form.numInteracciones + 1))}
+                    style={{ width: 52, height: 52, border: 'none', background: C.gray50, cursor: 'pointer', fontSize: 22, color: C.gray600, fontWeight: 700 }}>+</button>
+                </div>
+                <p style={{ margin: '10px 0 0', fontSize: 13, color: C.gray400 }}>
+                  El alumno realizará {form.numInteracciones} interacción{form.numInteracciones !== 1 ? 'es' : ''} completa{form.numInteracciones !== 1 ? 's' : ''} con el agente. Máximo 5.
+                </p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 8 }}>
+                    Fecha de inicio *
+                  </label>
+                  <input type="date" style={inputStyle} value={form.fechaInicio} onChange={e => set('fechaInicio', e.target.value)} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 8 }}>
+                    Fecha de término *
+                  </label>
+                  <input type="date" style={inputStyle} value={form.fechaTermino} min={form.fechaInicio} onChange={e => set('fechaTermino', e.target.value)} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 2: Instrucciones ── */}
+          {step === 2 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, color: C.navyDark, fontFamily: "'Georgia', serif" }}>Instrucciones y objetivos</h3>
+                <p style={{ margin: 0, fontSize: 14, color: C.gray400 }}>Este contenido será visible para el alumno al iniciar la simulación.</p>
+              </div>
+
+              <div style={{ background: `${C.navy}08`, border: `1px solid ${C.navy}20`, borderRadius: 12, padding: '14px 18px', fontSize: 13, color: C.navy, fontFamily: "'Georgia', serif" }}>
+                💡 El alumno verá estas instrucciones y objetivos <strong>antes de comenzar</strong> la conversación con el agente.
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 8 }}>
+                  Instrucciones para el alumno *
+                </label>
+                <textarea style={{ ...inputStyle, minHeight: 160, resize: 'vertical', lineHeight: 1.6 }}
+                  placeholder="Describe qué debe hacer el alumno en esta simulación. Ej: Deberás interactuar con Teo, un estudiante de 9 años con Dificultad Específica del Aprendizaje (DEA), aplicando estrategias de apoyo en lectura y escritura. Tu objetivo es generar un ambiente de confianza y utilizar al menos 2 estrategias diferenciadas durante la sesión."
+                  value={form.instrucciones} onChange={e => set('instrucciones', e.target.value)} />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 8 }}>
+                  Objetivos de aprendizaje *
+                </label>
+                <textarea style={{ ...inputStyle, minHeight: 130, resize: 'vertical', lineHeight: 1.6 }}
+                  placeholder="Ej:&#10;— Aplicar estrategias diferenciadas de lectura&#10;— Identificar barreras de aprendizaje en contexto real&#10;— Desarrollar un vínculo pedagógico empático y respetuoso"
+                  value={form.objetivos} onChange={e => set('objetivos', e.target.value)} />
+              </div>
+            </div>
+          )}
+
+          {/* ── STEP 3: Pauta ── */}
+          {step === 3 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+              <div>
+                <h3 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800, color: C.navyDark, fontFamily: "'Georgia', serif" }}>Pauta de evaluación</h3>
+                <p style={{ margin: 0, fontSize: 14, color: C.gray400 }}>Define cómo se evaluará el desempeño pedagógico del alumno.</p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {(['general', 'personalizada'] as const).map(tipo => (
+                  <button key={tipo} onClick={() => set('pautaTipo', tipo)}
+                    style={{
+                      padding: '18px 22px', borderRadius: 14, cursor: 'pointer', textAlign: 'left',
+                      border: `2px solid ${form.pautaTipo === tipo ? C.navy : C.gray200}`,
+                      background: form.pautaTipo === tipo ? `${C.navy}08` : C.white,
+                      display: 'flex', alignItems: 'flex-start', gap: 16, transition: 'all 0.15s',
+                    }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%', flexShrink: 0, marginTop: 3,
+                      border: `2px solid ${form.pautaTipo === tipo ? C.navy : C.gray200}`,
+                      background: form.pautaTipo === tipo ? C.navy : C.white,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {form.pautaTipo === tipo && <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.white }} />}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: form.pautaTipo === tipo ? C.navy : C.gray600, fontFamily: "'Georgia', serif" }}>
+                        {tipo === 'general' ? '📋 Usar pauta general del sistema' : '✏️ Crear pauta personalizada'}
+                      </div>
+                      <div style={{ fontSize: 13, color: C.gray400, marginTop: 4 }}>
+                        {tipo === 'general'
+                          ? '11 criterios pedagógicos predefinidos, validados para DEA y DIL. Evaluación SÍ/NO por criterio.'
+                          : 'Define tus propios criterios para esta simulación. Evaluación SÍ/NO por criterio.'}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Vista previa pauta general */}
+              {form.pautaTipo === 'general' && (
+                <div style={{ background: C.gray50, borderRadius: 14, padding: '20px 24px', border: `1px solid ${C.gray200}` }}>
+                  <p style={{ margin: '0 0 14px', fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 0.8 }}>Vista previa — 11 criterios pedagógicos</p>
+                  {CRITERIOS_GENERALES.map((c, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0', borderBottom: i < CRITERIOS_GENERALES.length - 1 ? `1px solid ${C.gray200}` : 'none' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: C.gray200, width: 22, textAlign: 'right', flexShrink: 0 }}>{i + 1}.</span>
+                      <span style={{ fontSize: 14, color: C.gray600, fontFamily: "'Georgia', serif", flex: 1 }}>{c}</span>
+                      <span style={{ fontSize: 11, color: C.gray400, background: C.gray200, borderRadius: 6, padding: '2px 8px', flexShrink: 0 }}>SÍ / NO</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Builder pauta personalizada */}
+              {form.pautaTipo === 'personalizada' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ background: `${C.gold}18`, border: `1px solid ${C.gold}40`, borderRadius: 12, padding: '12px 18px', fontSize: 13, color: '#78580a', fontFamily: "'Georgia', serif" }}>
+                    ⚠️ Los alumnos <strong>no verán</strong> esta pauta. Solo se usa para generar su retroalimentación al finalizar cada interacción. Cada criterio se evalúa <strong>SÍ / NO</strong>.
+                  </div>
+                  {form.criterios.map((c, i) => (
+                    <div key={c.id} style={{ background: C.white, border: `1.5px solid ${C.gray200}`, borderRadius: 14, padding: '18px 20px', display: 'flex', gap: 14 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.navyDark, color: C.white, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0, marginTop: 3 }}>
+                        {i + 1}
+                      </div>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <input style={inputStyle} placeholder="Nombre del criterio *" value={c.nombre} onChange={e => updateCriterio(c.id, 'nombre', e.target.value)} />
+                        <textarea style={{ ...inputStyle, minHeight: 70, resize: 'vertical', fontSize: 13, lineHeight: 1.5 }} placeholder="Descripción del criterio (opcional) — ¿Qué debe observarse para considerar que se cumplió?" value={c.descripcion} onChange={e => updateCriterio(c.id, 'descripcion', e.target.value)} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 12, color: C.gray400 }}>Evaluación:</span>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: C.navy, background: `${C.navy}0d`, borderRadius: 6, padding: '3px 10px' }}>SÍ / NO</span>
+                        </div>
+                      </div>
+                      <button onClick={() => removeCriterio(c.id)}
+                        style={{ width: 32, height: 32, border: `1px solid #fee2e2`, background: '#fff5f5', borderRadius: 8, cursor: form.criterios.length <= 1 ? 'not-allowed' : 'pointer', fontSize: 14, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: form.criterios.length <= 1 ? 0.4 : 1 }}
+                        title="Eliminar criterio">🗑️</button>
+                    </div>
+                  ))}
+                  {form.criterios.length < 15 && (
+                    <button onClick={addCriterio}
+                      style={{ padding: '14px', borderRadius: 12, border: `2px dashed ${C.gray200}`, background: 'transparent', cursor: 'pointer', fontSize: 14, color: C.gray400, fontFamily: "'Georgia', serif", fontWeight: 700, transition: 'all 0.15s' }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = C.navy; (e.currentTarget as HTMLButtonElement).style.color = C.navy; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = C.gray200; (e.currentTarget as HTMLButtonElement).style.color = C.gray400; }}>
+                      + Agregar criterio
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Bottom footer ── */}
+      <div style={{ height: 72, borderTop: `1px solid ${C.gray200}`, background: C.white, padding: '0 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+        <button onClick={step === 1 ? onClose : () => setStep(s => s - 1)}
+          style={{ padding: '11px 26px', borderRadius: 10, border: `1.5px solid ${C.gray200}`, background: C.white, color: C.gray600, cursor: 'pointer', fontSize: 14, fontFamily: "'Georgia', serif" }}>
+          {step === 1 ? 'Cancelar' : '← Anterior'}
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {[1, 2, 3].map(n => (
+            <div key={n} style={{ width: n === step ? 28 : 10, height: 10, borderRadius: 99, background: n === step ? C.navy : n < step ? C.gold : C.gray200, transition: 'all 0.2s' }} />
+          ))}
+        </div>
+        {step < 3 ? (
+          <button onClick={() => canNext() && setStep(s => s + 1)}
+            style={{ padding: '11px 30px', borderRadius: 10, border: 'none', background: canNext() ? C.navy : C.gray200, color: canNext() ? C.white : C.gray400, cursor: canNext() ? 'pointer' : 'not-allowed', fontSize: 14, fontWeight: 700, fontFamily: "'Georgia', serif", transition: 'all 0.15s' }}>
+            Siguiente →
+          </button>
+        ) : (
+          <button onClick={handleSave}
+            style={{ padding: '11px 32px', borderRadius: 10, border: 'none', background: C.navy, color: C.white, cursor: 'pointer', fontSize: 14, fontWeight: 700, fontFamily: "'Georgia', serif" }}>
+            ✓ Crear simulación
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const RamoView: React.FC<{
   ramoId: number;
   onBack: () => void;
   onStartSimulation: (c: 'Teo' | 'Jojo') => void;
   user: any;
 }> = ({ ramoId, onBack, onStartSimulation, user }) => {
+  const correoDocente = user?.email ?? '';
   const [activeTab, setActiveTab] = useState<RamoTab>('contenido');
   const ramo = mockRamos.find(r => r.id === ramoId)!;
   const [modules, setModules] = useState(() =>
     JSON.parse(JSON.stringify(mockModules[ramoId] ?? []))
   );
   const [modal, setModal] = useState<ModalState>({ open: false, moduleId: null });
+  const [simModal, setSimModal] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [deleteConfirm, setDeleteConfirm] = useState<{ moduleId: number; itemId: number } | null>(null);
 
   const tabs: { id: RamoTab; label: string }[] = [
     { id: 'contenido',      label: 'Contenido' },
+    { id: 'resultados',     label: 'Resultados alumnos' },
     { id: 'anuncios',       label: 'Anuncios' },
     { id: 'calificaciones', label: 'Calificaciones' },
     { id: 'participantes',  label: 'Participantes' },
     { id: 'mensajes',       label: 'Mensajes' },
   ];
+
+  // ── Resultados state ──
+  const [resultadosSims, setResultadosSims] = useState<any[]>([]);
+  const [selectedSimId, setSelectedSimId] = useState<number | null>(null);
+  const [resultadosData, setResultadosData] = useState<any>(null);
+  const [loadingResultados, setLoadingResultados] = useState(false);
+  const [selectedAlumno, setSelectedAlumno] = useState<any>(null);
+
+  // ── Detail modal state ──
+  const [detailAlumno, setDetailAlumno] = useState<any>(null);
+  const [detailEntregaIdx, setDetailEntregaIdx] = useState(0);
+  const [entregaMensajes, setEntregaMensajes] = useState<Record<number, any[]>>({});
+  const [loadingMensajes, setLoadingMensajes] = useState<Record<number, boolean>>({});
+
+  const fetchEntregaMensajes = async (entregaId: number) => {
+    if (entregaMensajes[entregaId] !== undefined) return;
+    setLoadingMensajes(prev => ({ ...prev, [entregaId]: true }));
+    try {
+      const data = await fetch(`${API}/simulacion/entrega/${entregaId}/mensajes`).then(r => r.json());
+      setEntregaMensajes(prev => ({ ...prev, [entregaId]: Array.isArray(data) ? data : [] }));
+    } catch {
+      setEntregaMensajes(prev => ({ ...prev, [entregaId]: [] }));
+    } finally {
+      setLoadingMensajes(prev => ({ ...prev, [entregaId]: false }));
+    }
+  };
+
+  const openDetail = (alumno: any) => {
+    setDetailAlumno(alumno);
+    setDetailEntregaIdx(0);
+    const ints: any[] = alumno.interacciones ?? [];
+    if (ints.length > 0) fetchEntregaMensajes(ints[0].entrega_id);
+  };
+
+  const generateTeacherPDF = (alumno: any, ent: any, msgs: any[], evalData: any) => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = 210; const M = 14;
+    doc.setFillColor(17, 27, 51); doc.rect(0, 0, W, 40, 'F');
+    doc.setFillColor(192, 57, 43); doc.rect(0, 40, W, 3, 'F');
+    doc.setFillColor(201, 168, 76); doc.rect(0, 43, W, 1.5, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(15);
+    doc.text('Universidad San Sebastián', M, 16);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(180, 190, 210);
+    doc.text('Facultad de Educación — Revisión Docente de Simulación', M, 24);
+    let y = 54;
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(17, 27, 51);
+    doc.text(`Alumno: ${alumno.correo}`, M, y); y += 6;
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(74, 85, 104);
+    doc.text(`Interacción ${ent.num_interaccion} · Agente: ${ent.agente_usado} · Estado: ${ent.estado}`, M, y); y += 12;
+    if (ent.planificacion) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(17, 27, 51);
+      doc.text('Planificación', M, y); y += 5;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(74, 85, 104);
+      const planLines = doc.splitTextToSize(ent.planificacion, W - M * 2) as string[];
+      doc.text(planLines, M, y); y += planLines.length * 4.5 + 8;
+    }
+    if (msgs.length > 0) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(17, 27, 51);
+      doc.text('Transcripción', M, y); y += 4;
+      autoTable(doc, {
+        startY: y, head: [['Participante', 'Mensaje']],
+        body: msgs.map((m: any) => [m.role === 'user' ? 'Docente-Estudiante' : ent.agente_usado, m.content]),
+        margin: { left: M, right: M },
+        headStyles: { fillColor: [26, 39, 68], textColor: 255, fontStyle: 'bold', fontSize: 8 },
+        bodyStyles: { fontSize: 8 }, columnStyles: { 0: { cellWidth: 38, fontStyle: 'bold' } },
+        alternateRowStyles: { fillColor: [248, 249, 251] },
+      });
+      y = (doc as any).lastAutoTable.finalY + 10;
+    }
+    if (evalData?.criteria?.length > 0) {
+      if (y > 220) { doc.addPage(); y = 15; }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(17, 27, 51);
+      doc.text('Criterios de Evaluación', M, y); y += 4;
+      autoTable(doc, {
+        startY: y, head: [['Criterio','Descripción','Cumpl.','Análisis','Justificación']],
+        body: evalData.criteria.map((c: any) => [
+          c.name||'', c.description||'',
+          (c.compliance||c.cumplimiento||'').toUpperCase()==='SÍ'?'Sí':'No',
+          c.analysis||'', c.justification||'',
+        ]),
+        margin: { left: M, right: M },
+        headStyles: { fillColor: [17,27,51], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+        bodyStyles: { fontSize: 7.5 },
+        columnStyles: { 0:{cellWidth:30},1:{cellWidth:34},2:{cellWidth:13,halign:'center'},3:{cellWidth:38},4:{cellWidth:38} },
+        alternateRowStyles: { fillColor: [248,249,251] },
+        didParseCell: (data: any) => {
+          if (data.column.index===2 && data.section==='body') {
+            data.cell.styles.textColor = data.cell.raw==='Sí'?[21,128,61]:[192,57,43];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        },
+      });
+    }
+    const pages = doc.getNumberOfPages();
+    for (let p = 1; p <= pages; p++) {
+      doc.setPage(p);
+      doc.setFillColor(17,27,51); doc.rect(0,287,W,10,'F');
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(180,190,210);
+      doc.text('Universidad San Sebastián — Plataforma de Simulación Pedagógica', M, 293);
+      doc.text(`Pág. ${p}/${pages}`, W-M, 293, { align: 'right' });
+    }
+    doc.save(`revision_${alumno.correo.split('@')[0]}_int${ent.num_interaccion}.pdf`);
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'resultados') return;
+    fetch(`${API}/simulacion/ramo/${ramo.code}`)
+      .then(r => r.json())
+      .then(data => {
+        setResultadosSims(data);
+        if (data.length > 0 && !selectedSimId) {
+          setSelectedSimId(data[0].id);
+        }
+      })
+      .catch(() => {});
+  }, [activeTab, ramo.code]);
+
+  useEffect(() => {
+    if (!selectedSimId) return;
+    setLoadingResultados(true);
+    setResultadosData(null);
+    setSelectedAlumno(null);
+    fetch(`${API}/simulacion/${selectedSimId}/resultados`)
+      .then(r => r.json())
+      .then(data => setResultadosData(data))
+      .catch(() => setResultadosData(null))
+      .finally(() => setLoadingResultados(false));
+  }, [selectedSimId]);
 
   const allItems = modules.flatMap((m: any) => m.items);
   const totalSims   = allItems.filter((i: any) => i.type === 'simulacion').length;
@@ -336,6 +932,12 @@ const RamoView: React.FC<{
     setModal({ open: true, moduleId, editItemId: item.id });
   };
   const closeModal = () => setModal({ open: false, moduleId: null });
+
+  const saveSim = (sim: any) => {
+    setModules((prev: any[]) => prev.map((mod: any) =>
+      mod.title.includes('Simulaci') ? { ...mod, items: [...mod.items, sim] } : mod
+    ));
+  };
 
   const saveItem = () => {
     if (!form.title.trim()) return;
@@ -482,6 +1084,16 @@ const RamoView: React.FC<{
         </div>
       )}
 
+      {/* ── Simulacion Modal ── */}
+      {simModal && (
+        <SimulacionModal
+          ramo={ramo}
+          correoDocente={correoDocente}
+          onClose={() => setSimModal(false)}
+          onSave={saveSim}
+        />
+      )}
+
       {/* ── Delete confirm ── */}
       {deleteConfirm && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -573,7 +1185,7 @@ const RamoView: React.FC<{
                     <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', fontFamily: "'Georgia', serif" }}>{mod.items.length} elemento{mod.items.length !== 1 ? 's' : ''}</span>
                   </div>
                   {/* "+ Agregar" button per module */}
-                  <button onClick={() => openCreate(mod.id)}
+                  <button onClick={() => mod.title.includes('Simulaci') ? setSimModal(true) : openCreate(mod.id)}
                     style={{
                       padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.25)',
                       background: 'rgba(255,255,255,0.1)', color: C.white, cursor: 'pointer',
@@ -693,6 +1305,25 @@ const RamoView: React.FC<{
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)', fontFamily: "'Georgia', serif", textTransform: 'uppercase', letterSpacing: 1 }}>Publicar contenido</span>
               </div>
               <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* Nueva simulación — acción especial */}
+                <button onClick={() => setSimModal(true)}
+                  style={{
+                    width: '100%', padding: '10px 14px', borderRadius: 10,
+                    border: `2px solid #7c3aed40`, background: '#ede9fe',
+                    color: '#7c3aed', cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                    fontFamily: "'Georgia', serif", display: 'flex', alignItems: 'center',
+                    gap: 10, textAlign: 'left', transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.filter = 'brightness(0.95)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.filter = 'brightness(1)'}
+                >
+                  <span style={{ fontSize: 18 }}>🤖</span>
+                  <div>
+                    <div>Nueva simulación IA</div>
+                    <div style={{ fontSize: 10, fontWeight: 400, marginTop: 1 }}>Teo, Jojo o ambos agentes</div>
+                  </div>
+                </button>
+
                 {([
                   { type: 'anuncio', label: 'Nuevo anuncio', icon: '📢', desc: 'Avisos para tus estudiantes' },
                   { type: 'recurso', label: 'Subir material', icon: '📄', desc: 'PDF, presentaciones, guías' },
@@ -786,8 +1417,355 @@ const RamoView: React.FC<{
         </div>
       )}
 
+      {/* ── Resultados tab ── */}
+      {activeTab === 'resultados' && (
+        <div style={{ padding: '28px 32px', flex: 1 }}>
+
+          {/* Simulation selector */}
+          {resultadosSims.length > 0 && (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
+              {resultadosSims.map((s: any) => (
+                <button key={s.id} onClick={() => setSelectedSimId(s.id)}
+                  style={{
+                    padding: '8px 18px', borderRadius: 8, cursor: 'pointer', fontSize: 13,
+                    fontWeight: 600, fontFamily: "'Georgia', serif", transition: 'all 0.15s',
+                    border: `2px solid ${selectedSimId === s.id ? C.navy : C.gray200}`,
+                    background: selectedSimId === s.id ? C.navy : C.white,
+                    color: selectedSimId === s.id ? C.white : C.gray600,
+                  }}>
+                  🤖 {s.nombre}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {resultadosSims.length === 0 && !loadingResultados && (
+            <div style={{ background: C.white, borderRadius: 14, padding: 40, textAlign: 'center', boxShadow: '0 2px 12px rgba(26,39,68,0.06)' }}>
+              <div style={{ fontSize: 44, marginBottom: 12 }}>📭</div>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: C.navyDark, fontFamily: "'Georgia', serif" }}>Sin simulaciones creadas</p>
+              <p style={{ margin: '6px 0 0', fontSize: 13, color: C.gray400 }}>Crea una simulación en la pestaña Contenido para ver resultados aquí.</p>
+            </div>
+          )}
+
+          {loadingResultados && (
+            <div style={{ display: 'flex', justifyContent: 'center', padding: 60, color: C.gray400, fontFamily: "'Georgia', serif" }}>
+              Cargando resultados…
+            </div>
+          )}
+
+          {resultadosData && !loadingResultados && (
+            <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+
+              {/* Students table */}
+              <div style={{ flex: 1, background: C.white, borderRadius: 14, boxShadow: '0 2px 12px rgba(26,39,68,0.06)', overflow: 'hidden' }}>
+                <div style={{ padding: '14px 20px', background: C.navyDark, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: C.white, fontFamily: "'Georgia', serif" }}>
+                    {resultadosData.nombre} — {resultadosData.alumnos?.length ?? 0} entregas
+                  </span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>
+                    {resultadosData.num_interacciones} interacción{resultadosData.num_interacciones > 1 ? 'es' : ''} por alumno
+                  </span>
+                </div>
+
+                {/* Table header */}
+                <div style={{ display: 'grid', gridTemplateColumns: `2fr repeat(${resultadosData.num_interacciones}, 1fr)`, background: C.gray50, padding: '10px 18px', borderBottom: `1px solid ${C.gray200}` }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 0.8 }}>Alumno</span>
+                  {Array.from({ length: resultadosData.num_interacciones }, (_, i) => (
+                    <span key={i} style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 0.8, textAlign: 'center' }}>
+                      Int. {i + 1}
+                    </span>
+                  ))}
+                </div>
+
+                {resultadosData.alumnos?.length === 0 && (
+                  <div style={{ padding: 36, textAlign: 'center', color: C.gray400, fontFamily: "'Georgia', serif" }}>
+                    Ningún alumno ha completado entregas aún.
+                  </div>
+                )}
+
+                {resultadosData.alumnos?.map((alumno: any) => {
+                  const interacciones: any[] = alumno.interacciones ?? [];
+                  return (
+                    <div key={alumno.correo}
+                      onClick={() => openDetail(alumno)}
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: `2fr repeat(${resultadosData.num_interacciones}, 1fr)`,
+                        padding: '13px 18px', cursor: 'pointer',
+                        borderBottom: `1px solid ${C.gray100}`,
+                        background: C.white, transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = C.gray50; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = C.white; }}
+                    >
+                      {/* Name */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{
+                          width: 32, height: 32, borderRadius: '50%',
+                          background: `linear-gradient(135deg, ${C.navy}, ${C.red})`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 11, fontWeight: 700, color: C.white, flexShrink: 0,
+                        }}>
+                          {alumno.correo.split('@')[0].slice(0, 2).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: C.navyDark, fontFamily: "'Georgia', serif" }}>
+                            {alumno.correo.split('@')[0]}
+                          </div>
+                          <div style={{ fontSize: 10, color: C.gray400 }}>{alumno.correo}</div>
+                        </div>
+                      </div>
+
+                      {/* Scores per interaction */}
+                      {Array.from({ length: resultadosData.num_interacciones }, (_, i) => {
+                        const ent = interacciones.find((e: any) => e.num_interaccion === i + 1);
+                        if (!ent) return (
+                          <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ fontSize: 11, color: C.gray200, fontFamily: "'Georgia', serif" }}>—</span>
+                          </div>
+                        );
+                        const score = ent.puntaje ?? 0;
+                        const color = score >= 8 ? '#15803d' : score >= 5 ? '#b45309' : C.red;
+                        const bg    = score >= 8 ? '#dcfce7' : score >= 5 ? '#fef3c7' : '#fee2e2';
+                        return (
+                          <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 15, fontWeight: 800, color, fontFamily: "'Georgia', serif" }}>{score}</span>
+                            <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 99, background: bg, color, fontWeight: 700 }}>
+                              {ent.estado === 'completada' ? '✓' : '…'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Click a row to open the full-screen detail modal */}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Full-screen alumno detail modal ── */}
+      {detailAlumno && (() => {
+        const ints: any[] = detailAlumno.interacciones ?? [];
+        const ent = ints[detailEntregaIdx];
+        const msgs: any[] = ent ? (entregaMensajes[ent.entrega_id] ?? []) : [];
+        const loadingMsg = ent ? (loadingMensajes[ent.entrega_id] ?? false) : false;
+        let evalData: any = null;
+        if (ent?.evaluacion_json) {
+          try { evalData = normalizeEvaluation(JSON.parse(ent.evaluacion_json)); } catch { /* malformed */ }
+        }
+        const sectionMeta: Record<string, { color: string; bg: string; icon: string }> = {
+          'Puntuación Total':     { color: C.navyDark, bg: `${C.navy}0d`, icon: '🎯' },
+          'Fortalezas':           { color: '#15803d', bg: '#f0fdf4', icon: '✅' },
+          'Aspectos a Mejorar':  { color: '#b45309', bg: '#fffbeb', icon: '⚠️' },
+          'Sugerencias':          { color: C.navy,   bg: `${C.navy}08`, icon: '💡' },
+        };
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(0,0,0,0.55)', display: 'flex' }}>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: C.white, margin: '0 0 0 40px', boxShadow: '-8px 0 40px rgba(0,0,0,0.25)' }}>
+
+              {/* Header */}
+              <div style={{ background: C.navyDark, padding: '0 28px', height: 60, display: 'flex', alignItems: 'center', gap: 18, flexShrink: 0 }}>
+                <button onClick={() => setDetailAlumno(null)}
+                  style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: C.white, cursor: 'pointer', width: 34, height: 34, borderRadius: 8, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  ←
+                </button>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: 0, fontSize: 10, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1 }}>Revisión de alumno</p>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: C.white, fontFamily: "'Georgia', serif" }}>{detailAlumno.correo}</p>
+                </div>
+                {ent && (
+                  <button onClick={() => generateTeacherPDF(detailAlumno, ent, msgs, evalData)}
+                    style={{ padding: '8px 20px', borderRadius: 8, border: `1.5px solid ${C.gold}`, background: 'transparent', color: C.gold, cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: "'Georgia', serif" }}>
+                    ⬇ PDF
+                  </button>
+                )}
+              </div>
+
+              {/* Interaction tabs */}
+              <div style={{ background: C.gray50, borderBottom: `1px solid ${C.gray200}`, padding: '0 28px', display: 'flex', gap: 4, flexShrink: 0 }}>
+                {ints.map((e: any, i: number) => (
+                  <button key={e.entrega_id}
+                    onClick={() => { setDetailEntregaIdx(i); fetchEntregaMensajes(e.entrega_id); }}
+                    style={{
+                      padding: '12px 20px', border: 'none', cursor: 'pointer', fontSize: 13, fontFamily: "'Georgia', serif",
+                      borderBottom: `3px solid ${i === detailEntregaIdx ? C.navy : 'transparent'}`,
+                      background: 'transparent', fontWeight: i === detailEntregaIdx ? 700 : 400,
+                      color: i === detailEntregaIdx ? C.navyDark : C.gray400,
+                    }}>
+                    Interacción {e.num_interaccion}
+                    {e.puntaje != null && (
+                      <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: e.puntaje >= 8 ? '#15803d' : e.puntaje >= 5 ? '#b45309' : C.red }}>
+                        {e.puntaje}/11
+                      </span>
+                    )}
+                  </button>
+                ))}
+                {ints.length === 0 && (
+                  <p style={{ padding: '12px 0', fontSize: 13, color: C.gray400, fontFamily: "'Georgia', serif", margin: 0 }}>Sin interacciones</p>
+                )}
+              </div>
+
+              {/* Body */}
+              {ent ? (
+                <div style={{ flex: 1, overflowY: 'auto', padding: '28px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+                  {/* Top: planificación + chat (side by side) */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 20, alignItems: 'flex-start' }}>
+
+                    {/* Planificación */}
+                    <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.gray200}`, overflow: 'hidden' }}>
+                      <div style={{ background: C.navyLight, padding: '10px 16px' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: C.white, fontFamily: "'Georgia', serif" }}>📝 Planificación</span>
+                      </div>
+                      <div style={{ padding: '14px 16px' }}>
+                        {ent.planificacion ? (
+                          <p style={{ margin: 0, fontSize: 12, color: C.gray600, fontFamily: "'Georgia', serif", lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+                            {ent.planificacion}
+                          </p>
+                        ) : (
+                          <p style={{ margin: 0, fontSize: 12, color: C.gray400, fontFamily: "'Georgia', serif" }}>Sin planificación registrada.</p>
+                        )}
+                        {ent.planificacion_archivo_url && (
+                          <a href={`${API}${ent.planificacion_archivo_url}`} target="_blank" rel="noreferrer"
+                            style={{ display: 'inline-block', marginTop: 12, fontSize: 12, color: C.navy, fontWeight: 700 }}>
+                            📎 Descargar archivo adjunto
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Chat transcript */}
+                    <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.gray200}`, overflow: 'hidden' }}>
+                      <div style={{ background: C.navyDark, padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: C.white, fontFamily: "'Georgia', serif" }}>💬 Transcripción del chat</span>
+                        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>Agente: {ent.agente_usado}</span>
+                      </div>
+                      <div style={{ maxHeight: 400, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {loadingMsg && (
+                          <p style={{ fontSize: 12, color: C.gray400, fontFamily: "'Georgia', serif", textAlign: 'center', padding: '20px 0' }}>Cargando mensajes…</p>
+                        )}
+                        {!loadingMsg && msgs.length === 0 && (
+                          <p style={{ fontSize: 12, color: C.gray400, fontFamily: "'Georgia', serif", textAlign: 'center', padding: '20px 0' }}>Sin mensajes registrados.</p>
+                        )}
+                        {msgs.map((msg: any, i: number) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                            <div style={{
+                              maxWidth: '80%', padding: '9px 14px', fontSize: 12, lineHeight: 1.6,
+                              fontFamily: "'Georgia', serif",
+                              borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                              background: msg.role === 'user' ? C.navyDark : C.gray50,
+                              color: msg.role === 'user' ? C.white : C.gray800,
+                            }}>
+                              {msg.content}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Evaluation section */}
+                  {evalData ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                      {/* Score bar */}
+                      <div style={{ background: C.white, borderRadius: 12, padding: '16px 20px', border: `1px solid ${C.gray200}`, display: 'flex', alignItems: 'center', gap: 20 }}>
+                        <div>
+                          <p style={{ margin: 0, fontSize: 10, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1 }}>Puntaje</p>
+                          <p style={{ margin: 0, fontSize: 28, fontWeight: 900, color: C.navyDark, fontFamily: "'Georgia', serif", lineHeight: 1 }}>
+                            {evalData.total_score ?? 0}<span style={{ fontSize: 14, fontWeight: 400, color: C.gray400 }}>/{evalData.criteria?.length ?? 11}</span>
+                          </p>
+                        </div>
+                        <div style={{ width: 1, height: 40, background: C.gray200 }} />
+                        <div>
+                          <p style={{ margin: 0, fontSize: 10, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1 }}>Desempeño</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700, color: C.navyDark, fontFamily: "'Georgia', serif" }}>{evalData.performance_range ?? '—'}</p>
+                        </div>
+                      </div>
+
+                      {/* Criteria table */}
+                      {evalData.criteria?.length > 0 && (
+                        <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.gray200}`, overflow: 'hidden' }}>
+                          <div style={{ background: C.navyDark, padding: '10px 16px' }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: C.white, fontFamily: "'Georgia', serif" }}>Criterios Pedagógicos</span>
+                          </div>
+                          <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                              <thead>
+                                <tr style={{ background: C.gray50, borderBottom: `2px solid ${C.gray200}` }}>
+                                  {['Criterio','Descripción','Cumplimiento','Análisis','Justificación'].map(h => (
+                                    <th key={h} style={{ padding: '9px 12px', textAlign: 'left', fontSize: 9, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 0.8, whiteSpace: 'nowrap' }}>{h}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {evalData.criteria.map((c: any, i: number) => {
+                                  const met = (c.compliance || c.cumplimiento || '').toUpperCase() === 'SÍ';
+                                  return (
+                                    <tr key={i} style={{ background: i % 2 === 0 ? C.white : C.gray50, borderBottom: `1px solid ${C.gray100}` }}>
+                                      <td style={{ padding: '10px 12px', fontWeight: 700, color: C.navyDark, fontFamily: "'Georgia', serif", verticalAlign: 'top', minWidth: 130 }}>{c.name || `Criterio ${i+1}`}</td>
+                                      <td style={{ padding: '10px 12px', color: C.gray600, verticalAlign: 'top', minWidth: 150, lineHeight: 1.5 }}>{c.description || '—'}</td>
+                                      <td style={{ padding: '10px 12px', textAlign: 'center', verticalAlign: 'top' }}>
+                                        <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 20, fontSize: 10, fontWeight: 700, background: met ? '#dcfce7' : '#fee2e2', color: met ? '#15803d' : C.red }}>
+                                          {met ? 'Sí' : 'No'}
+                                        </span>
+                                      </td>
+                                      <td style={{ padding: '10px 12px', color: C.gray600, verticalAlign: 'top', minWidth: 160, lineHeight: 1.5 }}>{c.analysis || '—'}</td>
+                                      <td style={{ padding: '10px 12px', color: C.gray600, verticalAlign: 'top', minWidth: 160, lineHeight: 1.5 }}>{c.justification || '—'}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Conclusion sections */}
+                      {evalData.conclusion && (() => {
+                        const sections = parseConclusionSections(evalData.conclusion);
+                        return sections.length > 0 ? (
+                          <div>
+                            <p style={{ margin: '0 0 10px', fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1 }}>Retroalimentación</p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                              {sections.map((sec, i) => {
+                                const meta = Object.entries(sectionMeta).find(([k]) => sec.title.includes(k))?.[1];
+                                return (
+                                  <div key={i} style={{ background: meta?.bg ?? C.white, borderRadius: 10, padding: '14px 18px', borderLeft: `4px solid ${meta?.color ?? C.gray200}` }}>
+                                    {sec.title && <p style={{ margin: '0 0 5px', fontSize: 11, fontWeight: 700, color: meta?.color ?? C.navyDark, fontFamily: "'Georgia', serif" }}>{meta?.icon ?? ''} {sec.title}</p>}
+                                    <p style={{ margin: 0, fontSize: 12, color: C.gray600, fontFamily: "'Georgia', serif", lineHeight: 1.7 }}>{sec.text}</p>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+                  ) : ent.estado === 'completada' ? (
+                    <p style={{ fontSize: 13, color: C.gray400, fontFamily: "'Georgia', serif" }}>Evaluación no disponible.</p>
+                  ) : (
+                    <div style={{ background: `${C.gold}15`, borderRadius: 12, padding: '14px 18px', border: `1px solid ${C.gold}40` }}>
+                      <p style={{ margin: 0, fontSize: 13, color: '#b45309', fontFamily: "'Georgia', serif" }}>⏳ Esta interacción aún está en progreso.</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <p style={{ fontSize: 14, color: C.gray400, fontFamily: "'Georgia', serif" }}>Sin interacciones registradas para este alumno.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Placeholder tabs */}
-      {activeTab !== 'contenido' && (
+      {activeTab !== 'contenido' && activeTab !== 'resultados' && (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: C.gray400 }}>
           <span style={{ fontSize: 48 }}>🚧</span>
           <p style={{ margin: 0, fontSize: 15, fontFamily: "'Georgia', serif", fontWeight: 700, color: C.gray600 }}>Próximamente</p>

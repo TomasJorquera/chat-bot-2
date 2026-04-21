@@ -31,4 +31,4 @@ docker-compose.override.yml
 
 # Archivos de sistema operativo
 .DS_Store
-Thumbs.db
+Thumbs.dbbackend/uploads/
