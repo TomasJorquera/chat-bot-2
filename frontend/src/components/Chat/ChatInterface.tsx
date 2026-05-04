@@ -15,8 +15,100 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    if (!file) return;
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setImagePreview(reader.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const clearImage = () => { setImageFile(null); setImagePreview(null); };
+
+  // ── STT: reconocimiento de voz del usuario ──
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  const transcriptRef = useRef('');
+
+  const toggleListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) { alert('Tu navegador no soporta reconocimiento de voz. Usa Chrome o Edge.'); return; }
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    transcriptRef.current = '';
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-CL';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onstart  = () => setIsListening(true);
+    recognition.onerror  = () => { setIsListening(false); };
+    recognition.onresult = (e: any) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          transcriptRef.current += e.results[i][0].transcript + ' ';
+        }
+      }
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      const text = transcriptRef.current.trim();
+      transcriptRef.current = '';
+      if (!text) return;
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        content: text,
+        sender: 'user',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, userMessage]);
+      getCharacterResponse(text);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
+  // ── TTS (gTTS via backend) — definido primero para que esté disponible en todo el componente ──
+  const TTS_API = ((import.meta as any).env?.VITE_API_URL) || 'http://localhost:8000';
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [isSpeaking, setIsSpeaking]     = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => { return () => { audioRef.current?.pause(); }; }, []);
+
+  const speakAgentResponse = async (text: string, agent: 'Teo' | 'Jojo') => {
+    if (!audioEnabled) return;
+    audioRef.current?.pause();
+    try {
+      const res = await fetch(`${TTS_API}/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, agent }),
+      });
+      const { audio_b64 } = await res.json();
+      if (!audio_b64) return;
+      const audio = new Audio(`data:audio/mp3;base64,${audio_b64}`);
+      audioRef.current = audio;
+      audio.onplay  = () => setIsSpeaking(true);
+      audio.onended = () => setIsSpeaking(false);
+      audio.onerror = () => setIsSpeaking(false);
+      audio.play();
+    } catch (e) { console.error('[TTS]', e); setIsSpeaking(false); }
+  };
 
   const characterInfo: Record<ChatInterfaceProps['character'], { emoji: string; age: number; grade: string; personality: string; greeting: string }> = {
     Teo: {
@@ -65,8 +157,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const getCharacterResponse = async (userMessage: string) => {
-    // Prepara el historial para la IA, excluyendo el saludo inicial (comparando por contenido)
+  const getCharacterResponse = async (userMessage: string, imgBase64?: string, imgMime?: string) => {
     const historyForAI = messages
       .filter((m: Message) => m.content !== characterInfo[character].greeting)
       .map((m: Message) => ({
@@ -76,17 +167,16 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
 
     setIsTyping(true);
     try {
-  const apiUrl = ((import.meta as any).env?.VITE_API_URL) || 'http://localhost:8000';
+      const apiUrl = ((import.meta as any).env?.VITE_API_URL) || 'http://localhost:8000';
+      const body: any = { message: userMessage, character, history: historyForAI };
+      if (imgBase64 && imgMime) {
+        body.image_base64 = imgBase64.split(',')[1]; // quitar el prefijo data:image/...;base64,
+        body.image_mime   = imgMime;
+      }
       const apiResponse = await fetch(`${apiUrl}/chat`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: userMessage,
-          character: character,
-          history: historyForAI // Enviamos el historial actual
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
 
       if (!apiResponse.ok) {
@@ -109,6 +199,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
         timestamp: new Date(),
       };
   setMessages((prev: Message[]) => [...prev, characterResponse]);
+      speakAgentResponse(content, character);
     } catch (error) {
       console.error("Error fetching character response:", error);
       let errorMessage = 'Lo siento, no puedo conversar en este momento.';
@@ -131,20 +222,24 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
 
-    const messageToSend = inputValue; // Guardamos el mensaje antes de limpiar el input
+    const messageToSend = inputValue;
+    const imgPreview = imagePreview;
+    const imgMime    = imageFile?.type;
 
+    // Mostrar mensaje del usuario con preview de imagen si hay
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: messageToSend,
+      content: messageToSend || '📎 Imagen adjunta',
       sender: 'user',
-      timestamp: new Date()
+      timestamp: new Date(),
+      imagePreview: imgPreview ?? undefined,
     };
 
-  setMessages((prev: Message[]) => [...prev, userMessage]);
+    setMessages((prev: Message[]) => [...prev, userMessage]);
     setInputValue('');
-    
-    // Llamamos a la nueva función que conecta con el backend
-    await getCharacterResponse(messageToSend); // Usamos la variable guardada
+    clearImage();
+
+    await getCharacterResponse(messageToSend, imgPreview ?? undefined, imgMime ?? undefined);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -379,6 +474,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
 
         {/* Right: actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={() => { setAudioEnabled(p => !p); window.speechSynthesis?.cancel(); }}
+            title={audioEnabled ? 'Silenciar audio' : 'Activar audio'}
+            style={{
+              width: 36, height: 36, borderRadius: 8, border: `1.5px solid ${audioEnabled ? C.navy : C.gray200}`,
+              background: audioEnabled ? `${C.navy}12` : C.gray50,
+              color: audioEnabled ? C.navy : C.gray400,
+              cursor: 'pointer', fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0, position: 'relative',
+            }}>
+            {isSpeaking ? '🔊' : audioEnabled ? '🔈' : '🔇'}
+            {isSpeaking && (
+              <span style={{ position: 'absolute', top: -3, right: -3, width: 8, height: 8, borderRadius: '50%', background: C.red }} />
+            )}
+          </button>
           <button
             onClick={handleFinishAndSave}
             disabled={isEvaluating}
@@ -434,6 +543,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
                 boxShadow: '0 1px 4px rgba(26,39,68,0.10)',
                 borderLeft: message.sender === 'character' ? `3px solid ${C.gold}` : 'none',
               }}>
+                {message.imagePreview && (
+                  <img src={message.imagePreview} alt="adjunto" style={{ maxWidth: '100%', borderRadius: 8, marginBottom: 6, display: 'block' }} />
+                )}
                 <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                   {message.content}
                 </p>
@@ -468,11 +580,36 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
       </div>
 
       {/* ── Input ── */}
-      <div style={{
-        background: C.white, borderTop: `1px solid ${C.gray200}`,
-        padding: '16px 24px', flexShrink: 0,
-      }}>
+      <div style={{ background: C.white, borderTop: `1px solid ${C.gray200}`, padding: '16px 24px', flexShrink: 0 }}>
+
+        {/* Preview imagen seleccionada */}
+        {imagePreview && (
+          <div style={{ maxWidth: 760, margin: '0 auto 10px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <img src={imagePreview} alt="adjunto" style={{ height: 64, borderRadius: 8, border: `1px solid ${C.gray200}`, objectFit: 'cover' }} />
+              <button onClick={clearImage} style={{
+                position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%',
+                background: C.red, border: 'none', color: C.white, fontSize: 10, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+              }}>✕</button>
+            </div>
+            <span style={{ fontSize: 12, color: C.gray400 }}>Imagen lista para enviar</span>
+          </div>
+        )}
+
+        <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageSelect} />
+
         <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', alignItems: 'flex-end', gap: 10 }}>
+          {/* Botón adjuntar imagen */}
+          <button onClick={() => imageInputRef.current?.click()} disabled={isTyping}
+            title="Adjuntar imagen"
+            style={{
+              width: 44, height: 44, borderRadius: 12, border: `1px solid ${imagePreview ? C.navy : C.gray200}`,
+              background: imagePreview ? `${C.navy}12` : C.white, cursor: 'pointer', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+            }}>
+            🖼️
+          </button>
           <textarea
             ref={inputRef}
             value={inputValue}
@@ -498,20 +635,34 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
               t.style.height = Math.min(t.scrollHeight, 140) + 'px';
             }}
           />
+          {/* Botón micrófono */}
+          <button onClick={toggleListening} disabled={isTyping}
+            title={isListening ? 'Detener grabación' : 'Hablar'}
+            style={{
+              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+              border: `1.5px solid ${isListening ? '#c0392b' : C.gray200}`,
+              background: isListening ? '#fef2f2' : C.white,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 20, transition: 'all 0.15s',
+              animation: isListening ? 'pulse 1s ease-in-out infinite' : 'none',
+            }}>
+            {isListening ? '🔴' : '🎤'}
+          </button>
+          {/* Botón enviar */}
           <button
             onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isTyping}
+            disabled={(!inputValue.trim() && !imagePreview) || isTyping}
             style={{
               width: 44, height: 44, borderRadius: 12, border: 'none', flexShrink: 0,
-              background: !inputValue.trim() || isTyping ? C.gray200 : C.navy,
-              cursor: !inputValue.trim() || isTyping ? 'not-allowed' : 'pointer',
+              background: (!inputValue.trim() && !imagePreview) || isTyping ? C.gray200 : C.navy,
+              cursor: (!inputValue.trim() && !imagePreview) || isTyping ? 'not-allowed' : 'pointer',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.15s',
             }}
-            onMouseEnter={e => { if (inputValue.trim() && !isTyping) (e.currentTarget as HTMLButtonElement).style.background = '#243459'; }}
-            onMouseLeave={e => { if (inputValue.trim() && !isTyping) (e.currentTarget as HTMLButtonElement).style.background = C.navy; }}
+            onMouseEnter={e => { if ((inputValue.trim() || imagePreview) && !isTyping) (e.currentTarget as HTMLButtonElement).style.background = '#243459'; }}
+            onMouseLeave={e => { if ((inputValue.trim() || imagePreview) && !isTyping) (e.currentTarget as HTMLButtonElement).style.background = C.navy; }}
           >
-            <Send style={{ width: 18, height: 18, color: !inputValue.trim() || isTyping ? C.gray400 : C.white }} />
+            <Send style={{ width: 18, height: 18, color: (!inputValue.trim() && !imagePreview) || isTyping ? C.gray400 : C.white }} />
           </button>
         </div>
         <div style={{ maxWidth: 760, margin: '6px auto 0', fontSize: 11, color: C.gray400, textAlign: 'right' }}>

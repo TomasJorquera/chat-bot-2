@@ -1,17 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from ..database import SessionLocal
-from ..models import Message # Este import ya no es estrictamente necesario para el endpoint /chat
-from ..utils.ai_engine import iniciar_chat_con_historial, chat_deepseek_message
+from ..models import Message
+from ..utils.ai_engine import iniciar_chat_con_historial, chat_gemini_message
 from ..prompts import PROMPTS
 
 router = APIRouter()
 
-class ChatRequest(BaseModel): # Modelo Pydantic para validar el cuerpo de la petición
+class ChatRequest(BaseModel):
     message: str
-    history: list # Aceptamos el historial que envía el frontend
+    history: list
     character: str
+    image_base64: Optional[str] = None   # imagen en base64 (opcional)
+    image_mime: Optional[str] = None     # ej: "image/jpeg", "image/png"
 
 def get_db():
     db = SessionLocal()
@@ -25,18 +28,21 @@ async def chat(chat_request: ChatRequest, db: Session = Depends(get_db)):
     try:
         user_message = chat_request.message
         character_name = chat_request.character
-        print(f"[CHAT] Mensaje recibido: {user_message}")  # Depuración
+        print(f"[CHAT] Mensaje recibido: {user_message}")
 
-        # Usamos el personaje recibido en la petición para obtener el prompt correcto
         prompt_base = PROMPTS.get(character_name)
         if not prompt_base:
             raise HTTPException(status_code=404, detail=f"Personaje '{character_name}' no encontrado.")
-        
-        historial_frontend = chat_request.history
 
-        # 2. Enviar mensaje al agente usando DeepSeek
-        respuesta = await chat_deepseek_message(prompt_base, historial_frontend, user_message)
-        print(f"[CHAT] Respuesta enviada: {respuesta}")  # Depuración
+        # Gemini 2.0 Flash Lite — soporta texto e imagen
+        respuesta = await chat_gemini_message(
+            system_prompt=prompt_base,
+            history=chat_request.history,
+            message=user_message,
+            image_base64=chat_request.image_base64,
+            image_mime=chat_request.image_mime,
+        )
+        print(f"[CHAT] Respuesta enviada: {respuesta}")
 
         # 3. Guardar el nuevo intercambio en la base de datos
         db.add_all([

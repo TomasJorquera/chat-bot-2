@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from ..database import SessionLocal
 from ..models import Alumno, Simulacion, Entrega, MensajeEntrega
 from ..schemas import SimulacionCreate, IniciarEntregaRequest, FinalizarEntregaRequest
-from ..utils.ai_engine import generate_gemini_response, chat_deepseek_message
+from ..utils.ai_engine import generate_gemini_response, chat_gemini_message, chat_deepseek_message
 from ..prompts import PROMPTS
 from .deps import get_db
 
@@ -166,23 +166,28 @@ async def enviar_mensaje_entrega(
     if not entrega:
         raise HTTPException(status_code=404, detail="Entrega no encontrada.")
 
-    personaje = payload.get("personaje", entrega.agente_usado)
-    mensaje   = payload.get("mensaje", "")
-    history   = payload.get("history", [])
+    personaje    = payload.get("personaje", entrega.agente_usado)
+    mensaje      = payload.get("mensaje", "")
+    history      = payload.get("history", [])
+    image_base64 = payload.get("image_base64", None)
+    image_mime   = payload.get("image_mime", None)
 
     if personaje not in PROMPTS:
         raise HTTPException(status_code=400, detail=f"Personaje '{personaje}' no existe.")
 
-    # Guardar mensaje del alumno
-    db.add(MensajeEntrega(entrega_id=entrega_id, role="user", content=mensaje))
+    # Guardar mensaje del alumno (indicar si tiene imagen adjunta)
+    content_user = mensaje if not image_base64 else f"{mensaje} [imagen adjunta]"
+    db.add(MensajeEntrega(entrega_id=entrega_id, role="user", content=content_user))
     db.commit()
 
-    # Generar respuesta del agente via DeepSeek
+    # Generar respuesta via Gemini 2.0 Flash Lite (soporta imagen)
     try:
-        respuesta = await chat_deepseek_message(
+        respuesta = await chat_gemini_message(
             system_prompt=PROMPTS[personaje],
             history=history,
             message=mensaje,
+            image_base64=image_base64,
+            image_mime=image_mime,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error del modelo: {str(e)}")

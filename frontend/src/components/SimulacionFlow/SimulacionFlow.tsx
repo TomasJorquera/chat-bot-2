@@ -152,11 +152,68 @@ const SimulacionFlow: React.FC<{
   const [messages, setMessages]     = useState<ChatMsg[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading]   = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [isSpeaking, setIsSpeaking]     = useState(false);
+  const [isListening, setIsListening]   = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const transcriptRef  = useRef('');
+
+  const toggleListening = () => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { alert('Tu navegador no soporta reconocimiento de voz. Usa Chrome o Edge.'); return; }
+    if (isListening) { recognitionRef.current?.stop(); return; }
+    transcriptRef.current = '';
+    const recognition = new SR();
+    recognition.lang = 'es-CL';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.onstart  = () => setIsListening(true);
+    recognition.onerror  = () => setIsListening(false);
+    recognition.onresult = (e: any) => {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) transcriptRef.current += e.results[i][0].transcript + ' ';
+      }
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      const t = transcriptRef.current.trim();
+      transcriptRef.current = '';
+      if (t) sendMessage(t);
+    };
+    recognitionRef.current = recognition;
+    recognition.start();
+  };
+
+  // ── TTS (gTTS via backend) ──
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => { return () => { audioRef.current?.pause(); }; }, []);
+
+  const speakAgentResponse = async (text: string, agent: 'Teo' | 'Jojo') => {
+    if (!audioEnabled) return;
+    audioRef.current?.pause();
+    try {
+      const res = await fetch(`${API}/tts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, agent }),
+      });
+      const { audio_b64 } = await res.json();
+      if (!audio_b64) return;
+      const audio = new Audio(`data:audio/mp3;base64,${audio_b64}`);
+      audioRef.current = audio;
+      audio.onplay  = () => setIsSpeaking(true);
+      audio.onended = () => setIsSpeaking(false);
+      audio.onerror = () => setIsSpeaking(false);
+      audio.play();
+    } catch { setIsSpeaking(false); }
+  };
 
   // ── Resultado ──
   const [evaluacion, setEvaluacion]     = useState<any>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [availableFiles, setAvailableFiles] = useState<Record<string, boolean>>({});
   const [completedResults, setCompletedResults] = useState<
     { interaccion: number; agent: string; score: number; total: number }[]
   >([]);
@@ -185,6 +242,20 @@ const SimulacionFlow: React.FC<{
       .catch(() => {})
       .finally(() => setCheckingCompletion(false));
   }, [simulacion.id, userEmail]);
+
+  // ── Comprobar archivos estáticos disponibles en el backend (ej. teo.pdf) ──
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const name = 'teo.pdf';
+        const res = await fetch(`${API}/uploads/planificaciones/${name}`, { method: 'HEAD' });
+        setAvailableFiles(prev => ({ ...prev, [name]: res.ok }));
+      } catch (e) {
+        setAvailableFiles(prev => ({ ...prev, ['teo.pdf']: false }));
+      }
+    };
+    check();
+  }, []);
 
   // ── Auto-scroll chat ──
   useEffect(() => {
@@ -230,13 +301,13 @@ const SimulacionFlow: React.FC<{
   };
 
   // ── Send message ──
-  const sendMessage = async () => {
-    const text = inputValue.trim();
+  const sendMessage = async (overrideText?: string) => {
+    const text = (overrideText ?? inputValue).trim();
     if (!text || isLoading) return;
     const userMsg: ChatMsg = { role: 'user', content: text };
     const newHistory = [...messages, userMsg];
     setMessages(newHistory);
-    setInputValue('');
+    if (!overrideText) setInputValue('');
     setIsLoading(true);
     try {
       let responseText = '';
@@ -268,6 +339,7 @@ const SimulacionFlow: React.FC<{
         responseText = data.response || data.message || 'Sin respuesta.';
       }
       setMessages(h => [...h, { role: 'assistant', content: responseText }]);
+      speakAgentResponse(responseText, selectedAgent);
     } catch {
       setMessages(h => [...h, {
         role: 'assistant',
@@ -495,6 +567,183 @@ const SimulacionFlow: React.FC<{
     doc.save(`evaluacion_${selectedAgent}_int${interaccion}_${new Date().toISOString().slice(0,10)}.pdf`);
   };
 
+  // ── Descarga PDF informe psicológico/psicopedagógico ──
+  const downloadInformePDF = (agent: 'Teo' | 'Jojo') => {
+    const filename = agent === 'Teo' ? 'teo.pdf' : 'jojo.pdf';
+    const link = document.createElement('a');
+    link.href = `/informes/${filename}`;
+    link.download = `Informe_${agent}_USS.pdf`;
+    link.click();
+    return;
+    // eslint-disable-next-line no-unreachable
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const W = 210; const M = 14; let y = 0;
+    const addPage = () => { doc.addPage(); y = 18; };
+    const checkY = (need: number) => { if (y + need > 275) addPage(); };
+
+    const header = () => {
+      doc.setFillColor(17, 27, 51);
+      doc.rect(0, 0, W, 28, 'F');
+      doc.setFillColor(192, 57, 43);
+      doc.rect(0, 28, W, 2, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(255, 255, 255);
+      doc.text('Universidad San Sebastián', M, 12);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(180, 190, 210);
+      doc.text('Facultad de Educación — Carpeta del Estudiante', M, 19);
+      doc.setFontSize(7); doc.text('CONFIDENCIAL', W - M, 12, { align: 'right' });
+      y = 38;
+    };
+
+    const sectionTitle = (title: string, color: [number,number,number]) => {
+      checkY(12);
+      doc.setFillColor(...color);
+      doc.rect(M, y, W - M * 2, 7, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(255, 255, 255);
+      doc.text(title, M + 3, y + 5);
+      y += 10;
+    };
+
+    const row = (label: string, value: string) => {
+      const lines = doc.splitTextToSize(value, W - M * 2 - 48);
+      const h = Math.max(8, lines.length * 5 + 4);
+      checkY(h);
+      doc.setFillColor(248, 249, 251);
+      doc.rect(M, y, W - M * 2, h, 'F');
+      doc.setDrawColor(220, 225, 235);
+      doc.rect(M, y, W - M * 2, h, 'S');
+      doc.setFillColor(17, 27, 51);
+      doc.rect(M, y, 1.5, h, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor(17, 27, 51);
+      doc.text(label, M + 4, y + 5);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(60, 60, 80);
+      doc.text(lines, M + 50, y + 5);
+      y += h + 2;
+    };
+
+    const footer = () => {
+      const pages = doc.getNumberOfPages();
+      for (let p = 1; p <= pages; p++) {
+        doc.setPage(p);
+        doc.setFillColor(17, 27, 51);
+        doc.rect(0, 287, W, 10, 'F');
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(7); doc.setTextColor(180, 190, 210);
+        doc.text('Universidad San Sebastián — Plataforma de Simulación Pedagógica', M, 293);
+        doc.text(`Pág. ${p}/${pages}`, W - M, 293, { align: 'right' });
+      }
+    };
+
+    header();
+
+    if (agent === 'Teo') {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(17, 27, 51);
+      doc.text('INFORME DE EVALUACIÓN PSICOPEDAGÓGICA', M, y); y += 6;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 100, 120);
+      doc.text('Dificultad Específica del Aprendizaje en Lectoescritura (F81.0)', M, y); y += 10;
+
+      sectionTitle('I. DATOS DE IDENTIFICACIÓN', [17, 39, 68]);
+      row('Estudiante', 'Teo');
+      row('Edad', '9 años 5 meses');
+      row('Curso', '3° Básico');
+      row('Diagnóstico', 'Dificultad Específica del Aprendizaje en Lectoescritura (DEA - F81.0)');
+      row('Profesional a Cargo', 'Educadora Diferencial (PIE)');
+      row('Motivo de Evaluación', 'Solicitud familiar, debido a dificultades persistentes en lectoescritura observadas desde primero básico que se consolidaron durante todo el segundo básico.');
+      y += 4;
+
+      sectionTitle('II. ANTECEDENTES DEL PROCESO DE EVALUACIÓN', [17, 39, 68]);
+      const antec = 'El proceso de evaluación integral se realizó a inicios del tercero Básico del estudiante, previa autorización y entrevista de anamnesis con ambos padres. La evaluación demandó tres sesiones de trabajo, superando la hora de duración cada una, debido a los altos y bajos en la motivación y los momentos de frustración del estudiante.\n\nSe aplicó el instrumento estandarizado EVALÚA 2. Para las pruebas de lectura, fue necesario modificar la estrategia: la examinadora leía los textos y el estudiante respondía oralmente. Esta adecuación fue altamente positiva, ya que comprobó que Teo posee un buen desempeño a nivel oral y que su comprensión se activa eficazmente cuando la información es accesada auditivamente.\n\nEl equipo multidisciplinario (psicólogo y educadora diferencial) concluyó el proceso sin requerir una evaluación formal del fonoaudiólogo.';
+      const antecLines = doc.splitTextToSize(antec, W - M * 2);
+      checkY(antecLines.length * 5 + 4);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(50, 50, 70);
+      doc.text(antecLines, M, y); y += antecLines.length * 5 + 6;
+
+      sectionTitle('III. RESULTADOS POR ÁREA', [192, 57, 43]);
+      row('Lectoescritura (-2 DE)', 'Comprensión Lectoral, Exactitud Lectora, Ortografía Fonética/Visual y Expresión Escrita se ubican bajo dos desviaciones estándar de la media. Confirma DEA en el ámbito lector. Lectura silábica/palabra a palabra. Dificultades en conciencia fonológica activa (fonémica y silábica).');
+      row('Matemáticas (-1 DE)', 'Cálculo, Numeración y Resolución de Problemas bajo una desviación estándar. La dificultad se concentra en la lectura de enunciados y en la representación simbólica (valor posicional, multiplicación), NO en el razonamiento lógico.');
+      row('Escala Cognitiva', 'Memoria y Atención en la media. Organización Perceptiva es el puntaje más bajo (en rango de la media). Confirma que la DEA no es de origen cognitivo general. La dificultad perceptiva contribuye a la disgrafía (confusión d/b).');
+      row('CI (WISC-V)', '115 — Rango Promedio-Alto. Este resultado DESCARTA Discapacidad Intelectual y establece la discrepancia requerida por D.S. N°170.');
+      y += 4;
+
+      sectionTitle('IV. SÍNTESIS SOCIOEMOCIONAL Y CONDUCTUAL', [180, 80, 0]);
+      const socio = 'La DEA ha generado una baja autoestima académica y ansiedad de desempeño. El temor a no ser considerado inteligente y a la decepción de sus padres (en contraste con sus hermanos exitosos) se traduce en conductas de evasión: mentir sobre tareas, dibujar en clases, ocultar notas. Su dificultad para organizarse (copia de pizarra) y la falta de participación en grupos no preferenciales son manifestaciones directas de su frustración y desánimo.\n\nConclusión Diagnóstica: Teo presenta un Autoconcepto Académico Vulnerado en el área del lenguaje, manifestado a través de ansiedad de desempeño y conductas de evasión. El alto potencial intelectual (CI 115) indica que la intervención debe ser psicoeducativa y emocional, enfocada en la resiliencia y el valor del esfuerzo para superar las barreras de su DEA.';
+      const socioLines = doc.splitTextToSize(socio, W - M * 2);
+      checkY(socioLines.length * 5 + 4);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(50, 50, 70);
+      doc.text(socioLines, M, y); y += socioLines.length * 5 + 6;
+
+      sectionTitle('V. SUGERENCIAS PEDAGÓGICAS', [21, 128, 61]);
+      row('Conciencia Fonológica', 'Trabajar conciencia silábica y fonémica (incluyendo pseudopalabras) para superar omisiones e inversiones. Método mixto (sintético + global) con palabras de alto interés para Teo (stickers, juegos, dibujos).');
+      row('Organización y Comprensión', 'Usar apoyos gráficos (pictogramas) para ideas centrales. Proveer apoyos visuales y materiales concretos. Desfragmentar tareas en pasos simples y secuenciados.');
+      row('Matemáticas', 'Fortalecer valor posicional y multiplicación con ejemplos de la vida real. Teo necesita comprender la utilidad de los aprendizajes para concentrarse.');
+      row('Refuerzo y Motivación', 'Aprovechar habilidades de dibujo. Aplicar Técnica del Sándwich (elogio-corrección-elogio). Contratos conductuales simples usando el dibujo como reforzador.');
+      row('Regulación Emocional', 'Validar la emoción de frustración ANTES de redirigir la tarea. Enseñarle a nombrar sus sentimientos. Favorecer roles de trabajo cooperativo que capitalicen sus fortalezas.');
+      y += 4;
+
+      sectionTitle('VI. ANÁLISIS PROYECTIVO (TEST DE LA FAMILIA)', [80, 80, 100]);
+      row('Estructura familiar', 'Teo y su abuela se dibujan apartados del resto de la familia (hermanos, madre, padre), separados por un espacio. Indica percepción de distanciamiento del eje académico/deportivo familiar.');
+      row('Vínculos afectivos', 'El perrito abrazándolo y el corazón sobre la abuela simbolizan sus redes de apoyo emocional clave (Rufino y la abuela Cecilia).');
+      row('Autoimagen', 'Dibuja su ropa, perro y cuaderno de dibujos con detalles y color. Su identidad y talento artístico son un punto de orgullo y seguridad.');
+      y += 4;
+
+      sectionTitle('VII. AVANCES REPORTADOS', [17, 39, 68]);
+      const avances = 'La profesora de aula ha incorporado estrategias de apoyo visual y desfragmentación de actividades. Asignó a Teo el rol de "Encargado de registrar el mejor momento del curso" mediante dibujos, lo que lo tiene muy motivado y reconocido por sus compañeros.\n\nLos padres comunicaron los resultados al niño de manera positiva: le explicaron que su cabeza "piensa muy bien y rápido" y le presentaron ejemplos de científicos con las mismas dificultades. Teo participa en un taller de Comics municipal y planea asistir a un taller de robótica con su abuela.\n\nAvances académicos: ya no tiene lectura silábica (pasó a lectura de palabras), su grafía mejoró y está manejando ejercicios con multiplicación. El contrato de responsabilidades escolares funciona bien.';
+      const avancesLines = doc.splitTextToSize(avances, W - M * 2);
+      checkY(avancesLines.length * 5 + 4);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(50, 50, 70);
+      doc.text(avancesLines, M, y); y += avancesLines.length * 5 + 6;
+
+    } else {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(17, 27, 51);
+      doc.text('INFORME PSICOLÓGICO FUNCIONAL DE TRANSICIÓN', M, y); y += 6;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100, 100, 120);
+      doc.text('Discapacidad Intelectual Leve (DIL) — Planificación Transición a la Vida Adulta', M, y); y += 10;
+
+      sectionTitle('I. IDENTIFICACIÓN Y ANTECEDENTES', [17, 39, 68]);
+      row('Estudiante', 'Josefina (Jojo)');
+      row('Edad', '15 años (Ingreso a 1° Medio)');
+      row('Diagnóstico PIE', 'Discapacidad Intelectual Leve (DIL) — Apoyo PIE desde 2° Básico');
+      row('CI (WISC-V)', 'CI≈65-70 — Rango Discapacidad Intelectual Leve');
+      row('Instrumentos', 'WISC-V, Escalas de Conducta Adaptativa, Entrevista a la estudiante, Entrevista familiar');
+      row('Propósito del informe', 'Reconfirmación diagnóstica para continuidad en PIE en Enseñanza Media y orientación vocacional/laboral temprana.');
+      y += 4;
+
+      sectionTitle('II. FUNCIONAMIENTO INTELECTUAL Y COGNITIVO', [192, 57, 43]);
+      row('Fortaleza principal', 'Excelente memoria para información concreta. Retiene datos fácticos de materias como Historia o Biología, y de sus intereses (fútbol). Esta memoria es la fortaleza clave a capitalizar en toda intervención.');
+      row('Barrera principal', 'Comprensión inferencial y pensamiento abstracto (típicos de 1° Medio). Mayor dificultad en lectura de textos complejos y resolución de problemas matemáticos abstractos.');
+      row('Punto focal', 'La intervención debe cambiar el foco hacia habilidades sociales de autoprotección y autonomía comunitaria para la vida adulta.');
+      y += 4;
+
+      sectionTitle('III. HABILIDADES ADAPTATIVAS', [180, 80, 0]);
+      row('Habilidades Prácticas (Autocuidado)', 'AVANCE SÓLIDO: Ha mejorado su autonomía para el autocuidado personal (vestirse, bañarse, gestión de horarios de sueño). Muestra independencia y preocupación por su presentación.');
+      row('Habilidades Conceptuales', 'ESTANCAMIENTO: Mantiene dependencia para tareas académicas. Dificultad en uso funcional del dinero (cálculo de vueltos, presupuesto simple) y comprensión de documentos oficiales o informativos.');
+      row('Habilidades Sociales', 'Buenas habilidades en el coro y con pares individuales. Su miedo a las burlas la lleva a evitar el contacto con el resto del curso (evasión a sala PIE). Vulnerable a manipulación o exclusión social.');
+      y += 4;
+
+      sectionTitle('IV. PERFIL SOCIOEMOCIONAL', [21, 128, 61]);
+      row('Autoestima', 'Tímida e insegura en grupos grandes. Se siente más segura en actividades de su interés (coro, fútbol). La familia muestra alta disposición y colaboración activa como red de apoyo.');
+      row('Intereses y talentos', 'Fútbol (retiene estadísticas y datos), música/coro (disciplina y participación), cuidado de animales (gato de su tía).');
+      row('Red de apoyo', 'Alta disposición y colaboración activa de la madre y abuela, especialmente para práctica de habilidades funcionales durante fines de semana.');
+      y += 4;
+
+      sectionTitle('V. OBJETIVOS PRIORITARIOS — TRANSICIÓN A LA VIDA ADULTA (TVA)', [17, 39, 68]);
+      row('Manejo del Dinero Funcional', 'Identificación de billetes y monedas, cálculo de vuelto de forma práctica usando juegos de rol y ejemplos de compra reales (kiosco, supermercado).');
+      row('Rutas y Seguridad Comunitaria', 'Reforzar recorrido colegio-casa con estrategias visuales (mapas simplificados, fotografías de puntos clave). Simular situaciones (pérdida de dinero, cambios de ruta).');
+      row('Autoprotección y Riesgos', 'Trabajo en habilidades de autoprotección (decir que no, reconocer riesgos, identificar abuso) dado su vulnerabilidad en entornos sociales complejos.');
+      row('Exploración Vocacional', 'Explorar intereses (fútbol, música/coro) para descubrir talentos transferibles. Iniciar indagación sobre opciones de capacitación futura (talleres laborales, cursos cortos).');
+      row('Plan Personal de Vida', 'Documentar intereses y talentos en PTI con miras a expandir su Plan Personal de Vida año a año durante Enseñanza Media.');
+      y += 4;
+
+      sectionTitle('VI. ORIENTACIONES PEDAGÓGICAS (1° MEDIO)', [80, 80, 100]);
+      row('Metodología', 'Funcional y ecológica. Conectar SIEMPRE el contenido académico con situaciones de la vida real (recetas, mapas, compras, transporte) en lugar de ejercicios abstractos.');
+      row('Estrategias de Acceso', 'Apoyos visuales permanentes. Presentar información paso a paso. Ejemplificar el producto final esperado antes de iniciar la tarea.');
+      row('Evaluación', 'Graduación en función de OA priorizados. Evaluaciones orales o de alternativa concreta. Refuerzos constantes. Promover autoevaluación.');
+      row('Principio Rector', 'El aprendizaje debe tener un sentido ecológico y funcional para Josefina, vinculando constantemente el contenido académico con su utilidad práctica en la vida.');
+      row('Inclusión Social', 'Promover roles de participación claros en el aula que capitalicen sus fortalezas (ej. encargada de datos o información fáctica, ayudante en organización de eventos del coro).');
+    }
+
+    footer();
+    doc.save(`informe_${agent}_USS.pdf`);
+  };
+
   // ── Shared styles ──
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '12px 14px', borderRadius: 10,
@@ -602,7 +851,7 @@ const SimulacionFlow: React.FC<{
             </div>
           </div>
 
-          <div style={{ padding: '40px 64px', maxWidth: 960, display: 'flex', flexDirection: 'column', gap: 28 }}>
+          <div style={{ padding: '40px 64px', maxWidth: 1100, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: 28, boxSizing: 'border-box' }}>
 
             {/* Agent selector (Ambos) or Agent card */}
             {simulacion.agente === 'Ambos' ? (
@@ -654,6 +903,146 @@ const SimulacionFlow: React.FC<{
                 </div>
               </div>
             )}
+
+            {/* ── Informe Psicológico y Psicopedagógico ── */}
+            {(() => {
+              const agentsToShow: ('Teo' | 'Jojo')[] = simulacion.agente === 'Ambos'
+                ? ['Teo', 'Jojo']
+                : [simulacion.agente as 'Teo' | 'Jojo'];
+
+              const INFORMES: Record<'Teo' | 'Jojo', { sections: { title: string; icon: string; color: string; items: { label: string; value: string }[] }[] }> = {
+                Teo: {
+                  sections: [
+                    {
+                      title: 'Identificación', icon: '🧒', color: '#1a2744',
+                      items: [
+                        { label: 'Estudiante', value: 'Teo' },
+                        { label: 'Edad', value: '9 años 5 meses' },
+                        { label: 'Curso', value: '3° Básico' },
+                        { label: 'Diagnóstico', value: 'DEA en Lectoescritura (F81.0) — Dificultad Específica del Aprendizaje' },
+                        { label: 'CI (WISC-V)', value: '115 — Rango Promedio-Alto (descarta Discapacidad Intelectual)' },
+                        { label: 'Motivo de derivación', value: 'Dificultades persistentes en lectoescritura observadas desde 1° Básico' },
+                      ],
+                    },
+                    {
+                      title: 'Resultados de la Evaluación', icon: '📊', color: '#c0392b',
+                      items: [
+                        { label: 'Lectoescritura', value: 'Comprensión lectora, Exactitud lectora, Ortografía y Expresión escrita: -2 DE (bajo la media). Lectura silábica, lenta e insegura. Confunde letras parecidas (b/d, s/z).' },
+                        { label: 'Matemáticas', value: 'Cálculo, Numeración y Resolución de problemas: -1 DE. La dificultad se concentra en la lectura de enunciados, no en el razonamiento lógico.' },
+                        { label: 'Escala Cognitiva', value: 'Memoria y Atención en la media. Organización Perceptiva es el índice más bajo (contribuye a la disgrafía).' },
+                        { label: 'Comprensión oral', value: 'Excelente cuando la información se presenta auditivamente. Responde bien a apoyos pictográficos y visuales.' },
+                      ],
+                    },
+                    {
+                      title: 'Perfil Socioemocional', icon: '💛', color: '#b45309',
+                      items: [
+                        { label: 'Autoestima', value: 'Baja autoestima académica. Percibe su dificultad lectora como una deficiencia de inteligencia.' },
+                        { label: 'Mecanismos de defensa', value: 'Evasión (mentir sobre tareas, ocultar notas) y refugio (dibujar en clases) para protegerse del juicio familiar y la frustración.' },
+                        { label: 'Presión familiar', value: 'Teme decepcionar a sus padres en comparación con sus hermanos mayores (exitosos en deportes y estudios).' },
+                        { label: 'Vínculos clave', value: 'Su abuela Cecilia (profesora y artista) y su perro Rufino son su red de apoyo emocional principal. Pedro es su mejor amigo y lo ayuda a leer.' },
+                        { label: 'Motivadores', value: 'Responde muy bien al refuerzo positivo, al dibujo como medio de aprendizaje y a las actividades con sentido concreto y funcional.' },
+                      ],
+                    },
+                    {
+                      title: 'Orientaciones Pedagógicas', icon: '🎯', color: '#15803d',
+                      items: [
+                        { label: 'Conciencia fonológica', value: 'Trabajar conciencia silábica y fonémica con palabras de alto interés para Teo (dibujos, stickers, juegos). Método mixto (sintético + global).' },
+                        { label: 'Apoyos visuales', value: 'Usar pictogramas para reforzar ideas centrales. Proveer instrucciones paso a paso con ejemplos visuales.' },
+                        { label: 'Matemáticas', value: 'Conectar contenidos con situaciones de la vida real. Fortalecer valor posicional y multiplicación con ejemplos funcionales y concretos.' },
+                        { label: 'Refuerzo y motivación', value: 'Aprovechar sus habilidades de dibujo. Aplicar Técnica del Sándwich (elogio-corrección-elogio). Contratos conductuales simples.' },
+                        { label: 'Regulación emocional', value: 'Validar su emoción de frustración ANTES de redirigir la tarea. Enseñarle a nombrar sus sentimientos.' },
+                      ],
+                    },
+                  ],
+                },
+                Jojo: {
+                  sections: [
+                    {
+                      title: 'Identificación', icon: '👧', color: '#1a2744',
+                      items: [
+                        { label: 'Estudiante', value: 'Josefina (Jojo)' },
+                        { label: 'Edad', value: '15 años' },
+                        { label: 'Curso', value: '1° Medio' },
+                        { label: 'Diagnóstico', value: 'Discapacidad Intelectual Leve (DIL) — Apoyo PIE desde 2° Básico' },
+                        { label: 'CI (WISC-V)', value: 'CI≈65-70 — Rango DIL' },
+                        { label: 'Propósito actual', value: 'Reconfirmación diagnóstica y planificación de Transición a la Vida Adulta (TVA)' },
+                      ],
+                    },
+                    {
+                      title: 'Perfil Cognitivo y Adaptativo', icon: '📊', color: '#c0392b',
+                      items: [
+                        { label: 'Fortaleza principal', value: 'Excelente memoria para información concreta (retiene datos fácticos de Historia, Biología, fútbol).' },
+                        { label: 'Barrera principal', value: 'Comprensión inferencial y pensamiento abstracto — mayor dificultad en contenidos de 1° Medio.' },
+                        { label: 'Habilidades prácticas', value: 'Avance sólido en autocuidado (vestirse, gestión de horarios). Dificultad en uso funcional del dinero (cálculo de vueltos, presupuesto simple).' },
+                        { label: 'Habilidades sociales', value: 'Buenas habilidades en el coro y con pares individuales. Evita el contacto grupal por miedo a burlas.' },
+                        { label: 'Intereses', value: 'Fútbol, música/coro. Afición por el gato de su tía.' },
+                      ],
+                    },
+                    {
+                      title: 'Perfil Socioemocional', icon: '💛', color: '#b45309',
+                      items: [
+                        { label: 'Autoestima', value: 'Tímida e insegura en grupos grandes. Se siente más segura en actividades de su interés (coro, fútbol).' },
+                        { label: 'Vulnerabilidad', value: 'Susceptible a situaciones de manipulación o exclusión social. Requiere trabajo de autoprotección.' },
+                        { label: 'Red de apoyo', value: 'Alta disposición y colaboración activa de madre y abuela. Esta red es fundamental para los objetivos de TVA.' },
+                        { label: 'Motivadores', value: 'Reconocimiento de sus talentos, actividades funcionales y concretas vinculadas a sus intereses.' },
+                      ],
+                    },
+                    {
+                      title: 'Orientaciones Pedagógicas (TVA)', icon: '🎯', color: '#15803d',
+                      items: [
+                        { label: 'Metodología', value: 'Funcional y ecológica. Conectar siempre el contenido académico con situaciones de la vida real (recetas, mapas, compras, transporte).' },
+                        { label: 'Acceso al aprendizaje', value: 'Apoyos visuales permanentes. Presentar información paso a paso. Ejemplificar el producto final esperado.' },
+                        { label: 'Evaluación', value: 'Evaluaciones orales o de alternativa concreta. Graduar complejidad. Favorecer autoevaluación.' },
+                        { label: 'Habilidades comunitarias', value: 'Trabajar manejo del dinero con juegos de rol. Rutas y seguridad con mapas simplificados. Autoprotección y reconocimiento de riesgos.' },
+                        { label: 'Exploración vocacional', value: 'Indagar intereses (fútbol, música) para conectar con opciones de capacitación futura. Documentar en PTI.' },
+                      ],
+                    },
+                  ],
+                },
+              };
+
+              return agentsToShow.map(agent => {
+                const ai = AGENT_INFO[agent];
+                return (
+                  <div key={agent} style={{
+                    background: `linear-gradient(135deg, ${C.navyDark}, #0f2a5e)`,
+                    borderRadius: 16, boxShadow: '0 4px 20px rgba(17,27,51,0.18)',
+                    padding: '24px 32px', display: 'flex', alignItems: 'center', gap: 20,
+                    border: `1px solid rgba(255,255,255,0.07)`,
+                  }}>
+                    <div style={{ width: 60, height: 60, borderRadius: '50%', background: `${ai.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, flexShrink: 0 }}>
+                      {ai.emoji}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: '0 0 4px', fontSize: 10, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: 1.5 }}>📂 Carpeta del Estudiante</p>
+                      <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: C.white, fontFamily: "'Georgia', serif" }}>
+                        Informe Psicológico y Psicopedagógico — {agent}
+                      </p>
+                      <p style={{ margin: '4px 0 0', fontSize: 12, color: ai.color }}>{ai.diagnosis} · {ai.age} años · {ai.grade}</p>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
+                      <button onClick={() => downloadInformePDF(agent)}
+                        style={{
+                          padding: '10px 24px', borderRadius: 8, border: `1.5px solid ${C.gold}`,
+                          background: 'transparent', color: C.gold, cursor: 'pointer',
+                          fontSize: 13, fontWeight: 700, fontFamily: "'Georgia', serif",
+                        }}>
+                        ⬇ Descargar informe PDF
+                      </button>
+                      {agent === 'Teo' && availableFiles['teo.pdf'] && (
+                        <a href={`${API}/uploads/planificaciones/teo.pdf`} target="_blank" rel="noopener noreferrer"
+                          style={{ marginTop: 8, padding: '10px 18px', borderRadius: 8, border: `1.5px solid ${C.navy}`, background: C.navy, color: C.white, textDecoration: 'none', fontSize: 13, fontWeight: 700, display: 'inline-block' }}>
+                          ⬇ Descargar PDF adjunto (Teo)
+                        </a>
+                      )}
+                      <p style={{ margin: 0, fontSize: 10, color: 'rgba(255,255,255,0.35)' }}>
+                        Informe completo · Evaluación Psicopedagógica + Psicológica
+                      </p>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
 
             {/* Instrucciones */}
             <div style={{ background: C.white, borderRadius: 14, boxShadow: '0 2px 12px rgba(26,39,68,0.06)', overflow: 'hidden' }}>
@@ -839,6 +1228,24 @@ const SimulacionFlow: React.FC<{
             <div style={{ fontSize: 12, color: C.gray400, fontFamily: "'Georgia', serif" }}>
               {userMsgCount} mensaje{userMsgCount !== 1 ? 's' : ''} enviado{userMsgCount !== 1 ? 's' : ''}
             </div>
+            {/* Botón audio */}
+            <button onClick={() => { setAudioEnabled(p => !p); window.speechSynthesis?.cancel(); }}
+              title={audioEnabled ? 'Silenciar audio' : 'Activar audio'}
+              style={{
+                width: 36, height: 36, borderRadius: 8, border: `1.5px solid ${audioEnabled ? C.navy : C.gray200}`,
+                background: audioEnabled ? `${C.navy}12` : C.gray50,
+                color: audioEnabled ? C.navy : C.gray400,
+                cursor: 'pointer', fontSize: 17, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0, position: 'relative',
+              }}>
+              {isSpeaking ? '🔊' : audioEnabled ? '🔈' : '🔇'}
+              {isSpeaking && (
+                <span style={{
+                  position: 'absolute', top: -3, right: -3, width: 8, height: 8,
+                  borderRadius: '50%', background: C.red,
+                }} />
+              )}
+            </button>
             <button onClick={finalizarChat} disabled={userMsgCount === 0}
               style={{
                 padding: '9px 22px', borderRadius: 8, border: 'none',
@@ -896,12 +1303,12 @@ const SimulacionFlow: React.FC<{
           </div>
 
           {/* Input bar */}
-          <div style={{ padding: '14px 28px', background: C.white, borderTop: `1px solid ${C.gray100}`, display: 'flex', gap: 12, flexShrink: 0 }}>
+          <div style={{ padding: '14px 28px', background: C.white, borderTop: `1px solid ${C.gray100}`, display: 'flex', gap: 10, flexShrink: 0, alignItems: 'flex-end' }}>
             <textarea
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-              placeholder="Escribe tu mensaje... (Enter para enviar, Shift+Enter para nueva línea)"
+              placeholder="Escribe tu mensaje o usa el micrófono..."
               rows={2}
               style={{
                 flex: 1, padding: '11px 16px', borderRadius: 10,
@@ -910,13 +1317,26 @@ const SimulacionFlow: React.FC<{
                 outline: 'none', resize: 'none', background: C.gray50, lineHeight: 1.5,
               }}
             />
-            <button onClick={sendMessage} disabled={!inputValue.trim() || isLoading}
+            {/* Micrófono */}
+            <button onClick={toggleListening} disabled={isLoading}
+              title={isListening ? 'Detener grabación' : 'Hablar'}
               style={{
-                width: 50, height: 50, borderRadius: 12, border: 'none', alignSelf: 'flex-end',
+                width: 46, height: 46, borderRadius: 10, flexShrink: 0,
+                border: `1.5px solid ${isListening ? C.red : C.gray200}`,
+                background: isListening ? '#fef2f2' : C.white,
+                cursor: 'pointer', fontSize: 20,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+              {isListening ? '🔴' : '🎤'}
+            </button>
+            {/* Enviar */}
+            <button onClick={() => sendMessage()} disabled={!inputValue.trim() || isLoading}
+              style={{
+                width: 46, height: 46, borderRadius: 10, border: 'none', flexShrink: 0,
                 background: inputValue.trim() && !isLoading ? C.navyDark : C.gray200,
                 color: inputValue.trim() && !isLoading ? C.white : C.gray400,
                 cursor: inputValue.trim() && !isLoading ? 'pointer' : 'not-allowed',
-                fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                fontSize: 22, display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
               ›
             </button>
