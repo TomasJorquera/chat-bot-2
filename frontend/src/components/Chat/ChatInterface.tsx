@@ -6,12 +6,20 @@ import EvaluationPdfPreview from './EvaluationPdfPreview';
 interface ChatInterfaceProps {
   character: 'Teo' | 'Jojo';
   onBack: () => void;
+  /**
+   * Cuando se pasa, el chat queda trazado: los mensajes se guardan vía
+   * /simulacion/entrega/{entregaId}/mensaje (con costo real) en vez del
+   * /chat legacy sin costo, y el audio TTS queda enlazado a esta entrega
+   * en generaciones_voz. Sin este prop, el comportamiento es idéntico al
+   * de siempre (sin traza) — compatibilidad total con usos existentes.
+   */
+  entregaId?: number;
 }
 
 // (HistoryMessage removed — not used)
 
 const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) => {
-  const { character, onBack } = props;
+  const { character, onBack, entregaId } = props;
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -90,14 +98,19 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
 
   useEffect(() => { return () => { audioRef.current?.pause(); }; }, []);
 
-  const speakAgentResponse = async (text: string, agent: 'Teo' | 'Jojo') => {
+  const speakAgentResponse = async (text: string, agent: 'Teo' | 'Jojo', mensajeId?: number) => {
     if (!audioEnabled) return;
     audioRef.current?.pause();
     try {
       const res = await fetch(`${TTS_API}/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, agent }),
+        body: JSON.stringify({
+          text,
+          agent,
+          entrega_id: entregaId,
+          mensaje_entrega_id: mensajeId,
+        }),
       });
       const { audio_b64 } = await res.json();
       if (!audio_b64) return;
@@ -129,14 +142,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
 
   useEffect(() => {
     // Al entrar al chat, reinicia el historial del personaje en el backend
-    // y muestra el saludo inicial en el frontend.
+    // (solo aplica al chat legacy sin traza; una entrega nace vacía) y
+    // muestra el saludo inicial en el frontend.
     const startNewSession = async () => {
-      const apiUrl = ((import.meta as any).env?.VITE_API_URL) || 'http://localhost:8000';
-      await fetch(`${apiUrl}/chat/restart`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ character: character }),
-      });
+      if (!entregaId) {
+        const apiUrl = ((import.meta as any).env?.VITE_API_URL) || 'http://localhost:8000';
+        await fetch(`${apiUrl}/chat/restart`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ character: character }),
+        });
+      }
 
       const greeting: Message = {
         id: Date.now().toString(),
@@ -147,7 +163,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
       setMessages([greeting]);
     };
     startNewSession();
-  }, [character]);
+  }, [character, entregaId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -168,12 +184,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
     setIsTyping(true);
     try {
       const apiUrl = ((import.meta as any).env?.VITE_API_URL) || 'http://localhost:8000';
-      const body: any = { message: userMessage, character, history: historyForAI };
+      const body: any = entregaId
+        ? { personaje: character, mensaje: userMessage, history: historyForAI }
+        : { message: userMessage, character, history: historyForAI };
       if (imgBase64 && imgMime) {
         body.image_base64 = imgBase64.split(',')[1]; // quitar el prefijo data:image/...;base64,
         body.image_mime   = imgMime;
       }
-      const apiResponse = await fetch(`${apiUrl}/chat`, {
+      const endpoint = entregaId ? `${apiUrl}/simulacion/entrega/${entregaId}/mensaje` : `${apiUrl}/chat`;
+      const apiResponse = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -187,7 +206,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
       const data = await apiResponse.json();
       console.log("[FRONT] Respuesta del backend:", data); // Depuración
 
-      const content = data.response;
+      const content = entregaId ? data.respuesta : data.response;
       if (!content) {
         throw new Error("Server response is empty.");
       }
@@ -199,7 +218,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
         timestamp: new Date(),
       };
   setMessages((prev: Message[]) => [...prev, characterResponse]);
-      speakAgentResponse(content, character);
+      speakAgentResponse(content, character, entregaId ? data.mensaje_id : undefined);
     } catch (error) {
       console.error("Error fetching character response:", error);
       let errorMessage = 'Lo siento, no puedo conversar en este momento.';
@@ -251,15 +270,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
 
   const handleRestart = async () => {
     try {
-    const apiUrl = ((import.meta as any).env?.VITE_API_URL) || 'http://localhost:8000';
-      await fetch(`${apiUrl}/chat/restart`, { 
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ character: character })
-      });
-      
+      // En modo trazado (entregaId) no hay endpoint de "reinicio" — el
+      // historial ya guardado en mensajes_entrega se conserva (es la traza
+      // real de la sesión), solo se limpia la vista local.
+      if (!entregaId) {
+        const apiUrl = ((import.meta as any).env?.VITE_API_URL) || 'http://localhost:8000';
+        await fetch(`${apiUrl}/chat/restart`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ character: character })
+        });
+      }
+
       // Si la llamada al backend es exitosa, reinicia el estado local
       const greeting: Message = {
         id: Date.now().toString(),

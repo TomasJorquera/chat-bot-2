@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import HomePage from './components/HomePage/HomePage_Blanco';
 import InterfaceStudent from './components/InterfaceStudent/InterfaceStudent';
 import InterfaceTeacher from './components/InterfaceTeacher/InterfaceTeacher';
+import AdminDashboard from './components/AdminDashboard/AdminDashboard';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
@@ -23,6 +24,7 @@ const AppContent: React.FC = () => {
 
   if (!user) return <HomePage />;
 
+  if (user.type === 'admin') return <AdminDashboard />;
   return user.type === 'student' ? <InterfaceStudent /> : <InterfaceTeacher />;
 };
 

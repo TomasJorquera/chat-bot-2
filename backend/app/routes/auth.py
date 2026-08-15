@@ -55,8 +55,14 @@ def login(payload: AlumnoLogin, db: Session = Depends(get_db)):
             detail="Cuenta desactivada. Contacta al administrador.",
         )
 
+    # Rol admin: cuentas @admin.uss.cl (habilita endpoints protegidos por get_admin_token)
+    rol = "admin" if alumno.correo.endswith("@admin.uss.cl") else None
+
     # El token NO incluye ia_asignada → experimento ciego
-    token = create_access_token({"sub": alumno.correo, "grupo": alumno.grupo})
+    token_payload = {"sub": alumno.correo, "grupo": alumno.grupo}
+    if rol:
+        token_payload["rol"] = rol
+    token = create_access_token(token_payload)
 
     return TokenResponse(
         access_token=token,

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   LogIn, ChevronRight,
-  ShieldCheck, BarChart2, FileText, Brain, Sparkles, ArrowDown
+  BarChart2, FileText, Sparkles, ArrowDown
 } from 'lucide-react';
 import AuthModal from '../Auth/AuthModal';
 
@@ -39,22 +39,29 @@ const FadeUp: React.FC<{ children: React.ReactNode; delay?: number; className?: 
   );
 };
 
-/* ── Design tokens ── */
+/* ── Design tokens: paleta de marca SimulAula ── */
 const C = {
-  indigo:     '#4f46e5',
-  indigoLight:'#818cf8',
-  indigoBg:   '#eef2ff',
-  cyan:       '#06b6d4',
-  cyanLight:  '#67e8f9',
-  cyanBg:     '#ecfeff',
-  slate900:   '#0f172a',
-  slate700:   '#334155',
-  slate500:   '#64748b',
-  slate200:   '#e2e8f0',
-  slate100:   '#f1f5f9',
-  slate50:    '#f8fafc',
-  white:      '#ffffff',
+  papel:      '#FAF7F1',
+  papelAlt:   '#F2ECDD',
+  texto:      '#2B2A28',
+  textoMuted: '#736B60',
+  textoFaint: '#A39A8D',
+  borde:      '#E5DCC8',
+  turquesa:      '#1E9E8C',
+  turquesaBg:    '#E5F3F1',
+  azulTeo:       '#3E8FC4',
+  azulTeoBg:     '#EAF3FA',
+  coralJojo:     '#E8623E',
+  coralJojoBg:   '#FCECE6',
+  ambar:         '#D99A1E',
+  ambarBg:       '#FBF1DE',
+  verde:         '#4A9E58',
+  verdeBg:       '#EAF5EC',
+  azulSimbolo:   '#2E6DA4',
+  white:      '#FFFFFF',
 };
+
+const LOGO_ICON_SMALL = '/branding/simulaula-isotipo.svg';
 
 const HomePageBlanco: React.FC = () => {
   const [showAuth, setShowAuth] = useState(false);
@@ -70,7 +77,7 @@ const HomePageBlanco: React.FC = () => {
   const openLogin    = () => { setAuthMode('login');    setShowAuth(true); };
 
   return (
-    <div style={{ minHeight: '100vh', background: C.white, color: C.slate900, overflowX: 'hidden', fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: C.papel, color: C.texto, overflowX: 'hidden', fontFamily: 'Inter, system-ui, sans-serif' }}>
 
       {/* ══════════════════════════════
           NAVBAR
@@ -79,26 +86,19 @@ const HomePageBlanco: React.FC = () => {
         style={{
           position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
           transition: 'all 0.4s ease',
-          background: scrolled ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0)',
+          background: scrolled ? 'rgba(250,247,241,0.92)' : 'rgba(250,247,241,0)',
           backdropFilter: scrolled ? 'blur(20px)' : 'none',
-          borderBottom: scrolled ? `1px solid ${C.slate200}` : 'none',
-          boxShadow: scrolled ? '0 1px 20px rgba(0,0,0,0.06)' : 'none',
+          borderBottom: scrolled ? `1px solid ${C.borde}` : 'none',
+          boxShadow: scrolled ? '0 1px 20px rgba(43,42,40,0.06)' : 'none',
         }}
       >
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 32px', height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
 
           {/* Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 38, height: 38, borderRadius: 10,
-              background: `linear-gradient(135deg, ${C.indigo}, ${C.cyan})`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: `0 4px 14px rgba(79,70,229,0.35)`,
-            }}>
-              <Brain style={{ width: 20, height: 20, color: C.white }} />
-            </div>
-            <span style={{ fontSize: 18, fontWeight: 800, color: C.slate900, letterSpacing: '-0.3px' }}>
-              Chat-<span style={{ color: C.indigo }}>BOT</span>
+            <img src={LOGO_ICON_SMALL} alt="SimulAula" style={{ width: 34, height: 34, display: 'block' }} />
+            <span style={{ fontSize: 18, fontWeight: 800, color: C.texto, letterSpacing: '-0.3px' }}>
+              Simul<span style={{ color: C.azulSimbolo }}>Aula</span>
             </span>
           </div>
 
@@ -115,16 +115,16 @@ const HomePageBlanco: React.FC = () => {
                 style={{
                   padding: '7px 18px', borderRadius: 99,
                   fontSize: 14, fontWeight: 600,
-                  color: C.slate700, textDecoration: 'none',
+                  color: C.textoMuted, textDecoration: 'none',
                   transition: 'all 0.2s',
                 }}
                 onMouseEnter={e => {
-                  (e.currentTarget as HTMLAnchorElement).style.background = C.indigoBg;
-                  (e.currentTarget as HTMLAnchorElement).style.color = C.indigo;
+                  (e.currentTarget as HTMLAnchorElement).style.background = C.turquesaBg;
+                  (e.currentTarget as HTMLAnchorElement).style.color = C.turquesa;
                 }}
                 onMouseLeave={e => {
                   (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-                  (e.currentTarget as HTMLAnchorElement).style.color = C.slate700;
+                  (e.currentTarget as HTMLAnchorElement).style.color = C.textoMuted;
                 }}
               >
                 {label}
@@ -139,13 +139,13 @@ const HomePageBlanco: React.FC = () => {
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '9px 22px', borderRadius: 10,
               fontSize: 14, fontWeight: 700, cursor: 'pointer',
-              background: `linear-gradient(135deg, ${C.indigo}, #6366f1)`,
+              background: `linear-gradient(135deg, ${C.turquesa}, ${C.azulSimbolo})`,
               color: C.white, border: 'none',
-              boxShadow: `0 4px 16px rgba(79,70,229,0.3)`,
+              boxShadow: `0 4px 16px rgba(30,158,140,0.3)`,
               transition: 'all 0.2s',
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 6px 20px rgba(79,70,229,0.4)`; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 4px 16px rgba(79,70,229,0.3)`; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 6px 20px rgba(30,158,140,0.4)`; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 4px 16px rgba(30,158,140,0.3)`; }}
           >
             <LogIn style={{ width: 15, height: 15 }} />
             Iniciar sesión
@@ -160,67 +160,69 @@ const HomePageBlanco: React.FC = () => {
 
         {/* Background gradient blobs */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-          <div style={{ position: 'absolute', width: 700, height: 700, top: '-15%', left: '-18%', background: `radial-gradient(circle, rgba(79,70,229,0.12) 0%, transparent 65%)`, filter: 'blur(40px)' }} />
-          <div style={{ position: 'absolute', width: 600, height: 600, top: '10%', right: '-15%', background: `radial-gradient(circle, rgba(6,182,212,0.12) 0%, transparent 65%)`, filter: 'blur(40px)' }} />
-          <div style={{ position: 'absolute', width: 500, height: 500, bottom: '0%', left: '25%', background: `radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 65%)`, filter: 'blur(60px)' }} />
+          <div style={{ position: 'absolute', width: 700, height: 700, top: '-15%', left: '-18%', background: `radial-gradient(circle, rgba(30,158,140,0.14) 0%, transparent 65%)`, filter: 'blur(40px)' }} />
+          <div style={{ position: 'absolute', width: 600, height: 600, top: '10%', right: '-15%', background: `radial-gradient(circle, rgba(62,143,196,0.14) 0%, transparent 65%)`, filter: 'blur(40px)' }} />
+          <div style={{ position: 'absolute', width: 500, height: 500, bottom: '0%', left: '25%', background: `radial-gradient(circle, rgba(217,154,30,0.10) 0%, transparent 65%)`, filter: 'blur(60px)' }} />
           {/* Subtle dot grid */}
           <div style={{
             position: 'absolute', inset: 0,
-            backgroundImage: `radial-gradient(${C.slate200} 1px, transparent 1px)`,
+            backgroundImage: `radial-gradient(${C.borde} 1px, transparent 1px)`,
             backgroundSize: '28px 28px',
             opacity: 0.7,
           }} />
         </div>
 
         {/* Floating character cards */}
-        <div style={{ position: 'absolute', top: '28%', left: '5%', background: C.white, borderRadius: 16, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.10)', border: `1px solid ${C.slate200}` }} className="hidden-mobile">
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: `linear-gradient(135deg, #818cf8, ${C.cyan})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🧒</div>
+        <div style={{ position: 'absolute', top: '28%', left: '5%', background: C.white, borderRadius: 16, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 8px 32px rgba(43,42,40,0.10)', border: `1px solid ${C.borde}` }} className="hidden-mobile">
+          <div style={{ width: 42, height: 42, borderRadius: 12, background: `linear-gradient(135deg, ${C.azulTeo}, #67b8e8)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>🧒</div>
           <div style={{ textAlign: 'left' }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: C.slate900, margin: 0 }}>Teo</p>
-            <p style={{ fontSize: 12, color: C.slate500, margin: 0 }}>9 años · DEA F81.0</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: C.texto, margin: 0 }}>Teo</p>
+            <p style={{ fontSize: 12, color: C.textoMuted, margin: 0 }}>9 años · DEA F81.0</p>
           </div>
         </div>
 
-        <div style={{ position: 'absolute', top: '33%', right: '4%', background: C.white, borderRadius: 16, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 8px 32px rgba(0,0,0,0.10)', border: `1px solid ${C.slate200}` }} className="hidden-mobile">
-          <div style={{ width: 42, height: 42, borderRadius: 12, background: `linear-gradient(135deg, #f472b6, #fb7185)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>👧</div>
+        <div style={{ position: 'absolute', top: '33%', right: '4%', background: C.white, borderRadius: 16, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: '0 8px 32px rgba(43,42,40,0.10)', border: `1px solid ${C.borde}` }} className="hidden-mobile">
+          <div style={{ width: 42, height: 42, borderRadius: 12, background: `linear-gradient(135deg, ${C.coralJojo}, #f3906f)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>👧</div>
           <div style={{ textAlign: 'left' }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: C.slate900, margin: 0 }}>Jojo</p>
-            <p style={{ fontSize: 12, color: C.slate500, margin: 0 }}>15 años · DIL</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: C.texto, margin: 0 }}>Jojo</p>
+            <p style={{ fontSize: 12, color: C.textoMuted, margin: 0 }}>15 años · DIL</p>
           </div>
         </div>
 
-        <div style={{ position: 'absolute', bottom: '22%', left: '6%', background: C.white, borderRadius: 12, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.08)', border: `1px solid ${C.slate200}` }} className="hidden-mobile">
-          <BarChart2 style={{ width: 16, height: 16, color: '#10b981' }} />
-          <p style={{ fontSize: 12, fontWeight: 600, color: C.slate700, margin: 0 }}>11 criterios evaluados ✓</p>
+        <div style={{ position: 'absolute', bottom: '22%', left: '6%', background: C.white, borderRadius: 12, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 6px 24px rgba(43,42,40,0.08)', border: `1px solid ${C.borde}` }} className="hidden-mobile">
+          <BarChart2 style={{ width: 16, height: 16, color: C.verde }} />
+          <p style={{ fontSize: 12, fontWeight: 600, color: C.textoMuted, margin: 0 }}>11 criterios evaluados ✓</p>
         </div>
 
-        <div style={{ position: 'absolute', bottom: '25%', right: '5%', background: C.white, borderRadius: 12, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 6px 24px rgba(0,0,0,0.08)', border: `1px solid ${C.slate200}` }} className="hidden-mobile">
-          <FileText style={{ width: 16, height: 16, color: C.indigo }} />
-          <p style={{ fontSize: 12, fontWeight: 600, color: C.slate700, margin: 0 }}>Informe PDF listo</p>
+        <div style={{ position: 'absolute', bottom: '25%', right: '5%', background: C.white, borderRadius: 12, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: '0 6px 24px rgba(43,42,40,0.08)', border: `1px solid ${C.borde}` }} className="hidden-mobile">
+          <FileText style={{ width: 16, height: 16, color: C.azulSimbolo }} />
+          <p style={{ fontSize: 12, fontWeight: 600, color: C.textoMuted, margin: 0 }}>Informe PDF listo</p>
         </div>
 
         {/* Hero content */}
         <div style={{ position: 'relative', zIndex: 10, maxWidth: 780, margin: '0 auto' }}>
 
+          <img src={LOGO_ICON_SMALL} alt="SimulAula" style={{ width: 72, height: 72, margin: '0 auto 24px', display: 'block' }} />
+
           {/* Badge */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: C.indigoBg, border: `1px solid rgba(79,70,229,0.25)`,
+            background: C.turquesaBg, border: `1px solid rgba(30,158,140,0.28)`,
             borderRadius: 99, padding: '7px 18px', marginBottom: 36,
-            fontSize: 13, fontWeight: 600, color: C.indigo,
+            fontSize: 13, fontWeight: 600, color: C.turquesa,
           }}>
             <Sparkles style={{ width: 14, height: 14 }} />
             Powered by Google Gemini AI
           </div>
 
-          <h1 style={{ fontSize: 'clamp(2.4rem, 6vw, 4.2rem)', fontWeight: 900, lineHeight: 1.08, letterSpacing: '-1.5px', color: C.slate900, marginBottom: 24 }}>
+          <h1 style={{ fontSize: 'clamp(2.4rem, 6vw, 4.2rem)', fontWeight: 900, lineHeight: 1.08, letterSpacing: '-1.5px', color: C.texto, marginBottom: 24 }}>
             Aprende a enseñar<br />
-            <span style={{ background: `linear-gradient(135deg, ${C.indigo}, ${C.cyan})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <span style={{ background: `linear-gradient(135deg, ${C.turquesa}, ${C.azulSimbolo})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               sin riesgo real.
             </span>
           </h1>
 
-          <p style={{ fontSize: 18, color: C.slate500, maxWidth: 580, margin: '0 auto 40px', lineHeight: 1.7 }}>
+          <p style={{ fontSize: 18, color: C.textoMuted, maxWidth: 580, margin: '0 auto 40px', lineHeight: 1.7 }}>
             Simula conversaciones pedagógicas con estudiantes de IA que presentan necesidades educativas especiales reales.
             Practica, recibe retroalimentación y mejora antes de llegar al aula.
           </p>
@@ -232,13 +234,13 @@ const HomePageBlanco: React.FC = () => {
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '14px 36px', borderRadius: 14,
                 fontSize: 16, fontWeight: 700, cursor: 'pointer',
-                background: `linear-gradient(135deg, ${C.indigo}, #6366f1)`,
+                background: `linear-gradient(135deg, ${C.turquesa}, ${C.azulSimbolo})`,
                 color: C.white, border: 'none',
-                boxShadow: `0 8px 24px rgba(79,70,229,0.35)`,
+                boxShadow: `0 8px 24px rgba(30,158,140,0.35)`,
                 transition: 'all 0.2s',
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 12px 28px rgba(79,70,229,0.45)`; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 8px 24px rgba(79,70,229,0.35)`; }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 12px 28px rgba(30,158,140,0.45)`; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 8px 24px rgba(30,158,140,0.35)`; }}
             >
               <LogIn style={{ width: 18, height: 18 }} />
               Ya tengo cuenta
@@ -252,16 +254,16 @@ const HomePageBlanco: React.FC = () => {
               { n: '11', label: 'Criterios pedagógicos' },
               { n: '∞', label: 'Simulaciones disponibles' },
             ].map((s) => (
-              <div key={s.label} style={{ background: C.white, border: `1px solid ${C.slate200}`, borderRadius: 14, padding: '18px 8px', textAlign: 'center', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-                <p style={{ fontSize: 28, fontWeight: 900, margin: '0 0 4px', background: `linear-gradient(135deg, ${C.indigo}, ${C.cyan})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.n}</p>
-                <p style={{ fontSize: 11, color: C.slate500, margin: 0, fontWeight: 500 }}>{s.label}</p>
+              <div key={s.label} style={{ background: C.white, border: `1px solid ${C.borde}`, borderRadius: 14, padding: '18px 8px', textAlign: 'center', boxShadow: '0 2px 12px rgba(43,42,40,0.05)' }}>
+                <p style={{ fontSize: 28, fontWeight: 900, margin: '0 0 4px', background: `linear-gradient(135deg, ${C.turquesa}, ${C.azulSimbolo})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{s.n}</p>
+                <p style={{ fontSize: 11, color: C.textoMuted, margin: 0, fontWeight: 500 }}>{s.label}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Scroll hint */}
-        <a href="#objetivo" style={{ position: 'absolute', bottom: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, color: C.slate500, textDecoration: 'none', fontSize: 12, fontWeight: 500, transition: 'color 0.2s' }}>
+        <a href="#objetivo" style={{ position: 'absolute', bottom: 32, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, color: C.textoMuted, textDecoration: 'none', fontSize: 12, fontWeight: 500, transition: 'color 0.2s' }}>
           Descubre más
           <ArrowDown style={{ width: 16, height: 16 }} />
         </a>
@@ -270,14 +272,14 @@ const HomePageBlanco: React.FC = () => {
       {/* ══════════════════════════════
           ¿QUÉ ES?
       ══════════════════════════════ */}
-      <section id="objetivo" style={{ padding: '80px 24px', background: C.slate50, position: 'relative', overflow: 'hidden' }}>
+      <section id="objetivo" style={{ padding: '80px 24px', background: C.papelAlt, position: 'relative', overflow: 'hidden' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <FadeUp className="text-center" style={{ textAlign: 'center', marginBottom: 52 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: C.indigo }}>¿Qué es Chat-BOT?</span>
-            <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', fontWeight: 900, color: C.slate900, margin: '16px 0 16px', letterSpacing: '-0.5px' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: C.turquesa }}>¿Qué es SimulAula?</span>
+            <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', fontWeight: 900, color: C.texto, margin: '16px 0 16px', letterSpacing: '-0.5px' }}>
               Formación docente del siglo XXI
             </h2>
-            <p style={{ color: C.slate500, fontSize: 17, maxWidth: 560, margin: '0 auto', lineHeight: 1.65 }}>
+            <p style={{ color: C.textoMuted, fontSize: 17, maxWidth: 560, margin: '0 auto', lineHeight: 1.65 }}>
               Una plataforma de simulación donde los futuros profesores pueden cometer errores, aprender y mejorar
               sin afectar a estudiantes reales con necesidades educativas especiales.
             </p>
@@ -288,36 +290,36 @@ const HomePageBlanco: React.FC = () => {
               {
                 delay: 0,
                 emoji: '🛡️',
-                iconBg: 'linear-gradient(135deg, #10b981, #34d399)',
-                glow: 'rgba(16,185,129,0.12)',
-                border: 'rgba(16,185,129,0.2)',
+                iconBg: `linear-gradient(135deg, ${C.verde}, #79c286)`,
+                glow: 'rgba(74,158,88,0.12)',
+                border: 'rgba(74,158,88,0.22)',
                 title: 'Entorno 100% seguro',
                 desc: 'Practica estrategias pedagógicas sin consecuencias reales para estudiantes vulnerables. El error aquí es aprendizaje, no daño.',
               },
               {
                 delay: 0.1,
                 emoji: '🧠',
-                iconBg: `linear-gradient(135deg, ${C.indigo}, #818cf8)`,
-                glow: `rgba(79,70,229,0.1)`,
-                border: `rgba(79,70,229,0.18)`,
+                iconBg: `linear-gradient(135deg, ${C.azulSimbolo}, ${C.azulTeo})`,
+                glow: `rgba(46,109,164,0.12)`,
+                border: `rgba(46,109,164,0.2)`,
                 title: 'IA con perfil diagnóstico real',
                 desc: 'Cada personaje está modelado sobre informes psicopedagógicos reales: reacciona auténticamente a tu tono, metodología y estrategias.',
               },
               {
                 delay: 0.2,
                 emoji: '📊',
-                iconBg: `linear-gradient(135deg, ${C.cyan}, #67e8f9)`,
-                glow: `rgba(6,182,212,0.1)`,
-                border: `rgba(6,182,212,0.2)`,
+                iconBg: `linear-gradient(135deg, ${C.turquesa}, #4dbcac)`,
+                glow: `rgba(30,158,140,0.12)`,
+                border: `rgba(30,158,140,0.22)`,
                 title: 'Evaluación con 11 criterios',
                 desc: 'La IA evalúa cada sesión con criterios psicopedagógicos validados: andamiaje, validación emocional, autonomía, inclusión y más.',
               },
               {
                 delay: 0.3,
                 emoji: '📄',
-                iconBg: 'linear-gradient(135deg, #f59e0b, #fbbf24)',
-                glow: 'rgba(245,158,11,0.1)',
-                border: 'rgba(245,158,11,0.2)',
+                iconBg: `linear-gradient(135deg, ${C.ambar}, #ecb955)`,
+                glow: 'rgba(217,154,30,0.12)',
+                border: 'rgba(217,154,30,0.22)',
                 title: 'Informe PDF automático',
                 desc: 'Al finalizar, descarga un reporte completo con la conversación, tabla de criterios y retroalimentación personalizada generada por IA.',
               },
@@ -341,8 +343,8 @@ const HomePageBlanco: React.FC = () => {
                   <div style={{ width: 52, height: 52, background: f.iconBg, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 18, boxShadow: `0 4px 12px ${f.glow}` }}>
                     {f.emoji}
                   </div>
-                  <h3 style={{ fontSize: 17, fontWeight: 700, color: C.slate900, margin: '0 0 10px' }}>{f.title}</h3>
-                  <p style={{ fontSize: 14, color: C.slate500, lineHeight: 1.65, margin: 0 }}>{f.desc}</p>
+                  <h3 style={{ fontSize: 17, fontWeight: 700, color: C.texto, margin: '0 0 10px' }}>{f.title}</h3>
+                  <p style={{ fontSize: 14, color: C.textoMuted, lineHeight: 1.65, margin: 0 }}>{f.desc}</p>
                 </div>
               </FadeUp>
             ))}
@@ -353,15 +355,15 @@ const HomePageBlanco: React.FC = () => {
       {/* ══════════════════════════════
           PERSONAJES
       ══════════════════════════════ */}
-      <section id="personajes" style={{ padding: '80px 24px', background: C.white, position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse 80% 50% at 50% 50%, rgba(79,70,229,0.04), transparent)` }} />
+      <section id="personajes" style={{ padding: '80px 24px', background: C.papel, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse 80% 50% at 50% 50%, rgba(30,158,140,0.05), transparent)` }} />
         <div style={{ maxWidth: 960, margin: '0 auto' }}>
           <FadeUp style={{ textAlign: 'center', marginBottom: 52 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: C.cyan }}>Estudiantes virtuales</span>
-            <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', fontWeight: 900, color: C.slate900, margin: '16px 0 16px', letterSpacing: '-0.5px' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: C.azulTeo }}>Estudiantes virtuales</span>
+            <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', fontWeight: 900, color: C.texto, margin: '16px 0 16px', letterSpacing: '-0.5px' }}>
               Conoce a quienes<br />vas a practicar
             </h2>
-            <p style={{ color: C.slate500, fontSize: 17, maxWidth: 420, margin: '0 auto', lineHeight: 1.65 }}>
+            <p style={{ color: C.textoMuted, fontSize: 17, maxWidth: 420, margin: '0 auto', lineHeight: 1.65 }}>
               Dos perfiles diagnósticos distintos. Cada uno responde de forma única según cómo lo trates.
             </p>
           </FadeUp>
@@ -369,25 +371,25 @@ const HomePageBlanco: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24 }}>
             {/* TEO */}
             <FadeUp delay={0}>
-              <div style={{ background: C.white, borderRadius: 24, overflow: 'hidden', border: `1px solid rgba(79,70,229,0.18)`, boxShadow: '0 8px 40px rgba(79,70,229,0.1)', height: '100%' }}>
-                <div style={{ height: 4, background: `linear-gradient(90deg, ${C.indigo}, ${C.cyan})` }} />
+              <div style={{ background: C.white, borderRadius: 24, overflow: 'hidden', border: `1px solid rgba(62,143,196,0.22)`, boxShadow: '0 8px 40px rgba(62,143,196,0.12)', height: '100%' }}>
+                <div style={{ height: 4, background: `linear-gradient(90deg, ${C.azulTeo}, ${C.turquesa})` }} />
                 <div style={{ padding: 32 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                       <div style={{ position: 'relative' }}>
-                        <div style={{ width: 72, height: 72, background: `linear-gradient(135deg, ${C.indigo}, ${C.cyan})`, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, boxShadow: `0 8px 20px rgba(79,70,229,0.3)` }}>🧒</div>
-                        <div style={{ position: 'absolute', bottom: -3, right: -3, width: 16, height: 16, background: '#22c55e', borderRadius: '50%', border: `2px solid ${C.white}` }} />
+                        <div style={{ width: 72, height: 72, background: `linear-gradient(135deg, ${C.azulTeo}, ${C.turquesa})`, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, boxShadow: `0 8px 20px rgba(62,143,196,0.32)` }}>🧒</div>
+                        <div style={{ position: 'absolute', bottom: -3, right: -3, width: 16, height: 16, background: C.verde, borderRadius: '50%', border: `2px solid ${C.white}` }} />
                       </div>
                       <div>
-                        <h3 style={{ fontSize: 26, fontWeight: 900, color: C.slate900, margin: 0 }}>Teo</h3>
-                        <p style={{ fontSize: 13, color: C.slate500, margin: 0 }}>9 años · 3º Básico</p>
+                        <h3 style={{ fontSize: 26, fontWeight: 900, color: C.texto, margin: 0 }}>Teo</h3>
+                        <p style={{ fontSize: 13, color: C.textoMuted, margin: 0 }}>9 años · 3º Básico</p>
                       </div>
                     </div>
-                    <span style={{ background: C.indigoBg, color: C.indigo, fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 99, border: `1px solid rgba(79,70,229,0.25)` }}>F81.0</span>
+                    <span style={{ background: C.azulTeoBg, color: C.azulTeo, fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 99, border: `1px solid rgba(62,143,196,0.28)` }}>F81.0</span>
                   </div>
 
-                  <p style={{ fontSize: 14, color: C.slate700, lineHeight: 1.7, marginBottom: 20 }}>
-                    Presenta una <strong style={{ color: C.slate900 }}>Dificultad Específica del Aprendizaje</strong> en lectura y escritura. Inteligente pero inseguro: responde brevemente, evade el error y florece con paciencia y refuerzo visual.
+                  <p style={{ fontSize: 14, color: C.texto, lineHeight: 1.7, marginBottom: 20 }}>
+                    Presenta una <strong style={{ color: C.texto }}>Dificultad Específica del Aprendizaje</strong> en lectura y escritura. Inteligente pero inseguro: responde brevemente, evade el error y florece con paciencia y refuerzo visual.
                   </p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
@@ -398,15 +400,15 @@ const HomePageBlanco: React.FC = () => {
                       'Sensible al tono del docente',
                     ].map((t) => (
                       <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.indigo, flexShrink: 0 }} />
-                        <span style={{ fontSize: 13, color: C.slate500 }}>{t}</span>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.azulTeo, flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, color: C.textoMuted }}>{t}</span>
                       </div>
                     ))}
                   </div>
 
-                  <div style={{ background: C.indigoBg, border: `1px solid rgba(79,70,229,0.18)`, borderRadius: 12, padding: '14px 16px' }}>
-                    <p style={{ fontSize: 13, color: C.slate700, fontStyle: 'italic', margin: '0 0 4px' }}>"Leo despacito... ¿me ayudas tú primero?"</p>
-                    <p style={{ fontSize: 11, color: C.slate500, margin: 0 }}>— Teo, ante una pregunta de comprensión lectora</p>
+                  <div style={{ background: C.azulTeoBg, border: `1px solid rgba(62,143,196,0.2)`, borderRadius: 12, padding: '14px 16px' }}>
+                    <p style={{ fontSize: 13, color: C.texto, fontStyle: 'italic', margin: '0 0 4px' }}>"Leo despacito... ¿me ayudas tú primero?"</p>
+                    <p style={{ fontSize: 11, color: C.textoMuted, margin: 0 }}>— Teo, ante una pregunta de comprensión lectora</p>
                   </div>
                 </div>
               </div>
@@ -414,25 +416,25 @@ const HomePageBlanco: React.FC = () => {
 
             {/* JOJO */}
             <FadeUp delay={0.15}>
-              <div style={{ background: C.white, borderRadius: 24, overflow: 'hidden', border: `1px solid rgba(244,114,182,0.25)`, boxShadow: '0 8px 40px rgba(244,114,182,0.1)', height: '100%' }}>
-                <div style={{ height: 4, background: 'linear-gradient(90deg, #ec4899, #fb7185)' }} />
+              <div style={{ background: C.white, borderRadius: 24, overflow: 'hidden', border: `1px solid rgba(232,98,62,0.25)`, boxShadow: '0 8px 40px rgba(232,98,62,0.1)', height: '100%' }}>
+                <div style={{ height: 4, background: `linear-gradient(90deg, ${C.coralJojo}, ${C.ambar})` }} />
                 <div style={{ padding: 32 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                       <div style={{ position: 'relative' }}>
-                        <div style={{ width: 72, height: 72, background: 'linear-gradient(135deg, #ec4899, #fb7185)', borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, boxShadow: '0 8px 20px rgba(236,72,153,0.3)' }}>👧</div>
-                        <div style={{ position: 'absolute', bottom: -3, right: -3, width: 16, height: 16, background: '#22c55e', borderRadius: '50%', border: `2px solid ${C.white}` }} />
+                        <div style={{ width: 72, height: 72, background: `linear-gradient(135deg, ${C.coralJojo}, #f3906f)`, borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, boxShadow: `0 8px 20px rgba(232,98,62,0.32)` }}>👧</div>
+                        <div style={{ position: 'absolute', bottom: -3, right: -3, width: 16, height: 16, background: C.verde, borderRadius: '50%', border: `2px solid ${C.white}` }} />
                       </div>
                       <div>
-                        <h3 style={{ fontSize: 26, fontWeight: 900, color: C.slate900, margin: 0 }}>Jojo</h3>
-                        <p style={{ fontSize: 13, color: C.slate500, margin: 0 }}>15 años · 1º Medio</p>
+                        <h3 style={{ fontSize: 26, fontWeight: 900, color: C.texto, margin: 0 }}>Jojo</h3>
+                        <p style={{ fontSize: 13, color: C.textoMuted, margin: 0 }}>15 años · 1º Medio</p>
                       </div>
                     </div>
-                    <span style={{ background: '#fdf2f8', color: '#ec4899', fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 99, border: '1px solid rgba(236,72,153,0.25)' }}>DIL</span>
+                    <span style={{ background: C.coralJojoBg, color: C.coralJojo, fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 99, border: `1px solid rgba(232,98,62,0.28)` }}>DIL</span>
                   </div>
 
-                  <p style={{ fontSize: 14, color: C.slate700, lineHeight: 1.7, marginBottom: 20 }}>
-                    Presenta <strong style={{ color: C.slate900 }}>Discapacidad Intelectual Leve</strong> con enfoque en Transición a la Vida Adulta. Pensamiento concreto y literal: entiende con ejemplos del día a día, se bloquea ante la abstracción.
+                  <p style={{ fontSize: 14, color: C.texto, lineHeight: 1.7, marginBottom: 20 }}>
+                    Presenta <strong style={{ color: C.texto }}>Discapacidad Intelectual Leve</strong> con enfoque en Transición a la Vida Adulta. Pensamiento concreto y literal: entiende con ejemplos del día a día, se bloquea ante la abstracción.
                   </p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
@@ -443,15 +445,15 @@ const HomePageBlanco: React.FC = () => {
                       'Se motiva con actividades de vida cotidiana',
                     ].map((t) => (
                       <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#ec4899', flexShrink: 0 }} />
-                        <span style={{ fontSize: 13, color: C.slate500 }}>{t}</span>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.coralJojo, flexShrink: 0 }} />
+                        <span style={{ fontSize: 13, color: C.textoMuted }}>{t}</span>
                       </div>
                     ))}
                   </div>
 
-                  <div style={{ background: '#fdf2f8', border: '1px solid rgba(236,72,153,0.2)', borderRadius: 12, padding: '14px 16px' }}>
-                    <p style={{ fontSize: 13, color: C.slate700, fontStyle: 'italic', margin: '0 0 4px' }}>"¿Para qué sirve eso en la vida real?"</p>
-                    <p style={{ fontSize: 11, color: C.slate500, margin: 0 }}>— Jojo, cuando el contexto no es funcional</p>
+                  <div style={{ background: C.coralJojoBg, border: `1px solid rgba(232,98,62,0.2)`, borderRadius: 12, padding: '14px 16px' }}>
+                    <p style={{ fontSize: 13, color: C.texto, fontStyle: 'italic', margin: '0 0 4px' }}>"¿Para qué sirve eso en la vida real?"</p>
+                    <p style={{ fontSize: 11, color: C.textoMuted, margin: 0 }}>— Jojo, cuando el contexto no es funcional</p>
                   </div>
                 </div>
               </div>
@@ -463,12 +465,12 @@ const HomePageBlanco: React.FC = () => {
       {/* ══════════════════════════════
           CÓMO FUNCIONA
       ══════════════════════════════ */}
-      <section id="como-funciona" style={{ padding: '80px 24px', background: C.slate50, position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse 70% 60% at 50% 100%, rgba(6,182,212,0.07), transparent)` }} />
+      <section id="como-funciona" style={{ padding: '80px 24px', background: C.papelAlt, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: `radial-gradient(ellipse 70% 60% at 50% 100%, rgba(62,143,196,0.06), transparent)` }} />
         <div style={{ maxWidth: 860, margin: '0 auto' }}>
           <FadeUp style={{ textAlign: 'center', marginBottom: 52 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: '#10b981' }}>¿Cómo funciona?</span>
-            <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', fontWeight: 900, color: C.slate900, margin: '16px 0 0', letterSpacing: '-0.5px' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: C.verde }}>¿Cómo funciona?</span>
+            <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', fontWeight: 900, color: C.texto, margin: '16px 0 0', letterSpacing: '-0.5px' }}>
               Tres pasos. Una mejor práctica.
             </h2>
           </FadeUp>
@@ -477,27 +479,27 @@ const HomePageBlanco: React.FC = () => {
             {[
               {
                 n: '01', delay: 0,
-                iconBg: `linear-gradient(135deg, ${C.indigo}, #818cf8)`,
-                glow: 'rgba(79,70,229,0.08)',
-                border: 'rgba(79,70,229,0.15)',
+                iconBg: `linear-gradient(135deg, ${C.turquesa}, #4dbcac)`,
+                glow: 'rgba(30,158,140,0.1)',
+                border: 'rgba(30,158,140,0.18)',
                 title: 'Elige tu personaje',
                 desc: 'Selecciona a Teo o Jojo. Revisa su ficha diagnóstica para entender su perfil antes de comenzar la simulación.',
                 tag: 'Selección',
               },
               {
                 n: '02', delay: 0.1,
-                iconBg: `linear-gradient(135deg, ${C.cyan}, #67e8f9)`,
-                glow: 'rgba(6,182,212,0.08)',
-                border: 'rgba(6,182,212,0.18)',
+                iconBg: `linear-gradient(135deg, ${C.azulTeo}, #67b8e8)`,
+                glow: 'rgba(62,143,196,0.1)',
+                border: 'rgba(62,143,196,0.2)',
                 title: 'Simula la conversación',
                 desc: 'Interactúa en tiempo real. El personaje responde con autenticidad psicopedagógica según tu tono, preguntas y estrategias. Cada decisión importa.',
                 tag: 'Simulación',
               },
               {
                 n: '03', delay: 0.2,
-                iconBg: 'linear-gradient(135deg, #10b981, #34d399)',
-                glow: 'rgba(16,185,129,0.08)',
-                border: 'rgba(16,185,129,0.18)',
+                iconBg: `linear-gradient(135deg, ${C.verde}, #79c286)`,
+                glow: 'rgba(74,158,88,0.1)',
+                border: 'rgba(74,158,88,0.2)',
                 title: 'Recibe tu evaluación PDF',
                 desc: 'Gemini AI analiza tu desempeño en 11 criterios pedagógicos y genera un informe descargable con fortalezas, áreas de mejora y sugerencias concretas.',
                 tag: 'Evaluación',
@@ -525,12 +527,12 @@ const HomePageBlanco: React.FC = () => {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                      <h3 style={{ fontSize: 16, fontWeight: 700, color: C.slate900, margin: 0 }}>{s.title}</h3>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: C.slate500, background: C.slate100, padding: '3px 10px', borderRadius: 99, border: `1px solid ${C.slate200}` }}>{s.tag}</span>
+                      <h3 style={{ fontSize: 16, fontWeight: 700, color: C.texto, margin: 0 }}>{s.title}</h3>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: C.textoMuted, background: C.papelAlt, padding: '3px 10px', borderRadius: 99, border: `1px solid ${C.borde}` }}>{s.tag}</span>
                     </div>
-                    <p style={{ fontSize: 14, color: C.slate500, lineHeight: 1.65, margin: 0 }}>{s.desc}</p>
+                    <p style={{ fontSize: 14, color: C.textoMuted, lineHeight: 1.65, margin: 0 }}>{s.desc}</p>
                   </div>
-                  <ChevronRight style={{ flexShrink: 0, width: 18, height: 18, color: C.slate200 }} />
+                  <ChevronRight style={{ flexShrink: 0, width: 18, height: 18, color: C.borde }} />
                 </div>
               </FadeUp>
             ))}
@@ -541,14 +543,12 @@ const HomePageBlanco: React.FC = () => {
       {/* ══════════════════════════════
           FOOTER
       ══════════════════════════════ */}
-      <footer style={{ padding: '36px 24px', borderTop: `1px solid ${C.slate200}`, textAlign: 'center', background: C.white }}>
+      <footer style={{ padding: '36px 24px', borderTop: `1px solid ${C.borde}`, textAlign: 'center', background: C.papel }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 8 }}>
-          <div style={{ width: 30, height: 30, borderRadius: 8, background: `linear-gradient(135deg, ${C.indigo}, ${C.cyan})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Brain style={{ width: 16, height: 16, color: C.white }} />
-          </div>
-          <span style={{ fontSize: 15, fontWeight: 800, color: C.slate900 }}>Chat-BOT</span>
+          <img src={LOGO_ICON_SMALL} alt="SimulAula" style={{ width: 26, height: 26, display: 'block' }} />
+          <span style={{ fontSize: 15, fontWeight: 800, color: C.texto }}>SimulAula</span>
         </div>
-        <p style={{ fontSize: 12, color: C.slate500, margin: 0 }}>Plataforma de formación docente con IA · Universidad San Sebastián</p>
+        <p style={{ fontSize: 12, color: C.textoMuted, margin: 0 }}>Plataforma de formación docente con IA · Universidad San Sebastián</p>
       </footer>
 
       <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} initialMode={authMode} />

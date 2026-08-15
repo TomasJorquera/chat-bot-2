@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>SimulAula — Preview de marca</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", sans-serif; background: #EFEAE0; margin: 0; padding: 40px; color: #2B2A28; }
+  h1 { font-size: 20px; margin: 0 0 24px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; max-width: 1100px; }
+  .card { background: #fff; border: 1px solid rgba(43,42,40,0.12); border-radius: 12px; padding: 16px; }
+  .card.dark { background: #1B1815; }
+  .card h2 { font-size: 13px; margin: 0 0 12px; font-weight: 700; }
+  .card.dark h2 { color: #F5F1E9; }
+  .stage { display: flex; align-items: center; justify-content: center; height: 160px; }
+  img { max-width: 100%; max-height: 100%; }
+  .fav-stage { display: flex; gap: 16px; align-items: center; justify-content: center; height: 160px; }
+  .fav-32 { width: 32px; height: 32px; background: #fff; border: 1px solid #ccc; border-radius: 6px; display:flex; align-items:center; justify-content:center; }
+  .fav-64 { width: 64px; height: 64px; background: #fff; border: 1px solid #ccc; border-radius: 8px; display:flex; align-items:center; justify-content:center; }
+</style>
+</head>
+<body>
+  <h1>SimulAula — preview de assets de marca</h1>
+  <div class="grid">
+    <div class="card">
+      <h2>simulaula-isotipo.svg</h2>
+      <div class="stage"><img src="simulaula-isotipo.svg"></div>
+    </div>
+    <div class="card">
+      <h2>simulaula-lockup-horizontal.svg</h2>
+      <div class="stage"><img src="simulaula-lockup-horizontal.svg"></div>
+    </div>
+    <div class="card">
+      <h2>simulaula-lockup-apilado.svg</h2>
+      <div class="stage"><img src="simulaula-lockup-apilado.svg"></div>
+    </div>
+    <div class="card">
+      <h2>simulaula-mono-oscuro.svg</h2>
+      <div class="stage"><img src="simulaula-mono-oscuro.svg"></div>
+    </div>
+    <div class="card dark">
+      <h2>simulaula-blanco.svg (sobre fondo oscuro)</h2>
+      <div class="stage"><img src="simulaula-blanco.svg"></div>
+    </div>
+    <div class="card">
+      <h2>simulaula-favicon.svg (a 32px y 64px reales)</h2>
+      <div class="fav-stage">
+        <div class="fav-32"><img src="simulaula-favicon.svg" style="width:28px;height:28px;"></div>
+        <div class="fav-64"><img src="simulaula-favicon.svg" style="width:56px;height:56px;"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -41,11 +41,30 @@ DOCENTES = [
 ]
 
 
+ADMIN_CORREO = "admin@admin.uss.cl"
+
+
 def run():
     db = SessionLocal()
     creados = 0
     omitidos = 0
     try:
+        # Cuenta admin bootstrap (dominio @admin.uss.cl -> rol=admin en el JWT,
+        # ver routes/auth.py). Necesaria para acceder a /admin/* sin depender
+        # de un token admin previo.
+        if not db.query(Alumno).filter(Alumno.correo == ADMIN_CORREO).first():
+            db.add(Alumno(
+                correo=ADMIN_CORREO,
+                contrasena_hash=pwd_context.hash(DEFAULT_PASSWORD),
+                ia_asignada="gemini-flash-lite",
+                grupo="A",
+                activo=True,
+            ))
+            db.commit()
+            print(f"  [OK] {ADMIN_CORREO} (admin bootstrap)")
+        else:
+            print(f"  [OMITIDO] {ADMIN_CORREO} ya existe.")
+
         for d in DOCENTES:
             existe = db.query(Alumno).filter(Alumno.correo == d["correo"]).first()
             if existe:

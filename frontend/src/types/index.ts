@@ -3,7 +3,7 @@ export interface User {
   name: string;
   lastName: string;
   email: string;
-  type: 'student' | 'teacher';
+  type: 'student' | 'teacher' | 'admin';
 }
 
 export interface Conversation {

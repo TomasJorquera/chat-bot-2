@@ -19,119 +19,16 @@ const C = {
   gray800:   '#1e293b',
 };
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
-const mockRamos = [
-  {
-    id: 1, code: 'EDU-301', name: 'Educación Diferencial',
-    professor: 'Dra. Carmen Soto', schedule: 'Lun / Mié 10:00–11:30',
-    room: 'Aula B-204', credits: 4, status: 'En curso', color: C.navy,
-    chatbots: [
-      { name: 'Teo' as const,  emoji: '🧒', diagnosis: 'DEA · F81.0', age: 9 },
-      { name: 'Jojo' as const, emoji: '👧', diagnosis: 'DIL',         age: 15 },
-    ],
-  },
-  {
-    id: 2, code: 'PSP-201', name: 'Psicopedagogía Básica',
-    professor: 'Dr. Roberto Vidal', schedule: 'Mar / Jue 14:00–15:30',
-    room: 'Lab C-101', credits: 5, status: 'En curso', color: C.red,
-    chatbots: [
-      { name: 'Teo' as const, emoji: '🧒', diagnosis: 'DEA · F81.0', age: 9 },
-    ],
-  },
-  {
-    id: 3, code: 'INT-401', name: 'Intervención Temprana',
-    professor: 'Mg. Patricia Sáez', schedule: 'Vie 08:00–11:00',
-    room: 'Aula A-110', credits: 3, status: 'En curso', color: C.gold,
-    chatbots: [
-      { name: 'Teo' as const,  emoji: '🧒', diagnosis: 'DEA · F81.0', age: 9 },
-      { name: 'Jojo' as const, emoji: '👧', diagnosis: 'DIL',         age: 15 },
-    ],
-  },
-];
-
 type StudentItemStatus = 'pendiente' | 'completado' | 'entregado' | 'visto';
 
-const mockStudentModules: Record<number, {
-  id: number; title: string; pinned?: boolean; items: {
-    id: number; type: 'simulacion' | 'tarea' | 'recurso' | 'anuncio';
-    title: string; description: string; dueDate?: string;
-    character?: 'Teo' | 'Jojo'; myStatus: StudentItemStatus;
-    grade?: number;
-  }[]
-}[]> = {
-  1: [
-    {
-      id: 1, title: 'Información General', pinned: true,
-      items: [
-        { id: 1, type: 'recurso',  title: 'Programa del curso',  description: 'Objetivos, metodología y evaluaciones del semestre.', myStatus: 'visto' },
-        { id: 2, type: 'anuncio',  title: 'Bienvenida al ramo',  description: 'Estimadas/os estudiantes: bienvenidos a Educación Diferencial semestre 2025-1. En este ramo desarrollarán competencias pedagógicas clave a través de simulaciones con IA.', myStatus: 'visto' },
-      ],
-    },
-    {
-      id: 2, title: 'Simulaciones con IA',
-      items: [
-        { id: 3, type: 'simulacion', title: 'Simulación con Teo',  description: 'Practica estrategias pedagógicas con Teo, un estudiante de 9 años con DEA (F81.0).', character: 'Teo',  myStatus: 'completado' },
-        { id: 4, type: 'simulacion', title: 'Simulación con Jojo', description: 'Interactúa con Jojo, estudiante de 15 años con Discapacidad Intelectual Leve.', character: 'Jojo', myStatus: 'pendiente' },
-      ],
-    },
-    {
-      id: 3, title: 'Tareas y Evaluaciones',
-      items: [
-        { id: 5, type: 'tarea', title: 'Informe reflexivo N°1', description: 'Redacta un informe reflexivo de mínimo 2 páginas sobre tu experiencia de simulación con Teo. Incluye estrategias utilizadas y reflexión crítica.', dueDate: '2025-04-14', myStatus: 'pendiente' },
-        { id: 6, type: 'tarea', title: 'Portfolio pedagógico', description: 'Compila tus evaluaciones y estrategias aplicadas durante el semestre en un portfolio digital.', dueDate: '2025-06-30', myStatus: 'pendiente' },
-      ],
-    },
-    {
-      id: 4, title: 'Recursos y Material de Apoyo',
-      items: [
-        { id: 7, type: 'recurso', title: 'Manual DSM-5: Trastornos del aprendizaje', description: 'Criterios diagnósticos y orientaciones pedagógicas para el trabajo con NEE.', myStatus: 'visto' },
-        { id: 8, type: 'recurso', title: 'Guía de adaptaciones curriculares',         description: 'Estrategias diferenciadas para el aula inclusiva. Material de apoyo para las simulaciones.', myStatus: 'pendiente' },
-      ],
-    },
-  ],
-  2: [
-    {
-      id: 1, title: 'Información General', pinned: true,
-      items: [
-        { id: 1, type: 'recurso', title: 'Programa del curso', description: 'Objetivos, metodología y evaluaciones del semestre.', myStatus: 'visto' },
-        { id: 2, type: 'anuncio', title: 'Evaluación parcial', description: 'La evaluación parcial se realizará el día martes 22 de abril. Temario: módulos 1 y 2.', myStatus: 'pendiente' },
-      ],
-    },
-    {
-      id: 2, title: 'Simulaciones con IA',
-      items: [
-        { id: 3, type: 'simulacion', title: 'Simulación con Teo', description: 'Practica estrategias pedagógicas con Teo, un estudiante con DEA (F81.0).', character: 'Teo', myStatus: 'pendiente' },
-      ],
-    },
-    {
-      id: 3, title: 'Tareas y Evaluaciones',
-      items: [
-        { id: 4, type: 'tarea', title: 'Diagnóstico psicopedagógico', description: 'Elabora un diagnóstico a partir de los datos entregados en clases. Extensión: mínimo 3 páginas.', dueDate: '2025-04-21', myStatus: 'entregado', grade: 5.8 },
-      ],
-    },
-  ],
-  3: [
-    {
-      id: 1, title: 'Información General', pinned: true,
-      items: [
-        { id: 1, type: 'recurso', title: 'Programa del curso', description: 'Objetivos, metodología y evaluaciones del semestre.', myStatus: 'visto' },
-      ],
-    },
-    {
-      id: 2, title: 'Simulaciones con IA',
-      items: [
-        { id: 2, type: 'simulacion', title: 'Simulación con Teo',  description: 'Practica estrategias pedagógicas con Teo.', character: 'Teo',  myStatus: 'completado' },
-        { id: 3, type: 'simulacion', title: 'Simulación con Jojo', description: 'Interactúa con Jojo, estudiante con Discapacidad Intelectual Leve.', character: 'Jojo', myStatus: 'pendiente' },
-      ],
-    },
-    {
-      id: 3, title: 'Tareas y Evaluaciones',
-      items: [
-        { id: 4, type: 'tarea', title: 'Plan de intervención temprana', description: 'Diseña un plan de intervención para el caso asignado. Considera diagnóstico, objetivos, metodología y evaluación.', dueDate: '2025-05-05', myStatus: 'pendiente' },
-      ],
-    },
-  ],
-};
+interface RamoReal { id: number; codigo: string; nombre: string; profesor_correo: string | null; num_alumnos: number; }
+
+const RAMO_COLORS = [C.navy, C.red, C.gold];
+
+// TS infiere mal `token ? {Authorization:...} : {}` como HeadersInit — se
+// tipa explícito en su lugar (mismo problema resuelto en InterfaceTeacher.tsx).
+const authHeaders = (token: string | null): Record<string, string> =>
+  token ? { Authorization: `Bearer ${token}` } : {};
 
 type ViewType = 'my-courses' | 'schedule' | 'ramo';
 type RamoTab = 'contenido' | 'anuncios' | 'calificaciones' | 'mensajes';
@@ -273,12 +170,37 @@ const StudentRamoView: React.FC<{
   onStartChat: (c: 'Teo' | 'Jojo') => void;
   onStartSimulacion: (sim: SimulacionData) => void;
 }> = ({ ramoId, onBack, onStartChat, onStartSimulacion }) => {
+  const { token } = useAuth();
   const [activeTab, setActiveTab] = useState<RamoTab>('contenido');
-  const ramo = mockRamos.find(r => r.id === ramoId)!;
+
+  // Ramo real (código/nombre/docente) — antes venía de mockRamos.
+  const [ramoReal, setRamoReal] = useState<RamoReal | null>(null);
+  useEffect(() => {
+    const fetchRamo = async () => {
+      try {
+        const res = await fetch(`${API}/ramos/mios`, { headers: authHeaders(token) });
+        if (res.ok) {
+          const list: RamoReal[] = await res.json();
+          setRamoReal(list.find(r => r.id === ramoId) ?? null);
+        }
+      } catch (e) {
+        console.error('[StudentRamoView] Error cargando ramo:', e);
+      }
+    };
+    fetchRamo();
+  }, [ramoId, token]);
+  const ramo = {
+    code: ramoReal?.codigo ?? '—',
+    name: ramoReal?.nombre ?? 'Cargando…',
+    professor: ramoReal?.profesor_correo ?? '',
+    schedule: '', room: '',
+  };
+
   const [realSimulaciones, setRealSimulaciones] = useState<SimulacionData[]>([]);
 
   // Fetch real simulations (with full details) from backend for this ramo
   useEffect(() => {
+    if (!ramoReal) return;
     fetch(`${API}/simulacion/ramo/${ramo.code}`)
       .then(r => r.json())
       .then(async (list: any[]) => {
@@ -296,29 +218,55 @@ const StudentRamoView: React.FC<{
           ramo: { code: ramo.code, name: ramo.name },
         })));
       })
-      .catch(() => { /* use mock fallback silently */ });
-  }, [ramo.code, ramo.name]);
+      .catch(() => { /* sin simulaciones asignadas todavía */ });
+  }, [ramoReal, ramo.code, ramo.name]);
 
-  // Build modules: replace mock simulacion items with real ones from backend when available
-  const baseModules = mockStudentModules[ramoId] ?? [];
-  const modules = realSimulaciones.length > 0
-    ? baseModules.map(mod => {
-        if (!mod.title.includes('Simulaci')) return mod;
-        return {
-          ...mod,
-          items: realSimulaciones.map(sim => ({
-            id: sim.id!,
-            type: 'simulacion' as const,
-            title: sim.title,
-            description: `Interactúa con ${sim.agente}. ${sim.numInteracciones} interacción${sim.numInteracciones > 1 ? 'es' : ''} en esta simulación.`,
-            character: (sim.agente === 'Ambos' ? 'Teo' : sim.agente) as 'Teo' | 'Jojo',
-            myStatus: 'pendiente' as StudentItemStatus,
-            dueDate: undefined as string | undefined,
-            grade: undefined as number | undefined,
-          })),
-        };
-      })
-    : baseModules;
+  // Contenido real (anuncios/tareas/recursos publicados) — antes venía de
+  // mockStudentModules. No hay seguimiento de entrega por alumno todavía
+  // (ver ARCHITECTURE_PHASE_1.md / plan): myStatus queda como 'pendiente'
+  // honesto (no se inventa 'completado'/'entregado' sin datos reales) salvo
+  // para simulaciones, donde ya era así antes de este cambio.
+  const [contenido, setContenido] = useState<any[]>([]);
+  useEffect(() => {
+    const fetchContenido = async () => {
+      try {
+        const res = await fetch(`${API}/ramos/${ramoId}/contenido`, { headers: authHeaders(token) });
+        if (res.ok) {
+          const data = await res.json();
+          setContenido(data.contenido ?? []);
+        }
+      } catch (e) {
+        console.error('[StudentRamoView] Error cargando contenido:', e);
+      }
+    };
+    fetchContenido();
+  }, [ramoId, token]);
+
+  const toDisplayItem = (i: any) => ({
+    id: i.id, type: i.tipo as 'tarea' | 'recurso' | 'anuncio', title: i.titulo,
+    description: i.descripcion ?? '', dueDate: i.fecha_entrega ?? undefined,
+    myStatus: 'pendiente' as StudentItemStatus, grade: undefined as number | undefined,
+  });
+  const bucketFor = (tipo: string) => contenido.filter((i: any) => i.tipo === tipo).map(toDisplayItem);
+
+  const modules: { id: number; title: string; pinned?: boolean; items: any[] }[] = [
+    { id: 1, title: 'Anuncios', items: bucketFor('anuncio') },
+    {
+      id: 2, title: 'Simulaciones con IA',
+      items: realSimulaciones.map(sim => ({
+        id: sim.id!,
+        type: 'simulacion' as const,
+        title: sim.title,
+        description: `Interactúa con ${sim.agente}. ${sim.numInteracciones} interacción${sim.numInteracciones > 1 ? 'es' : ''} en esta simulación.`,
+        character: (sim.agente === 'Ambos' ? 'Teo' : sim.agente) as 'Teo' | 'Jojo',
+        myStatus: 'pendiente' as StudentItemStatus,
+        dueDate: undefined as string | undefined,
+        grade: undefined as number | undefined,
+      })),
+    },
+    { id: 3, title: 'Tareas y Evaluaciones', items: bucketFor('tarea') },
+    { id: 4, title: 'Recursos y Material de Apoyo', items: bucketFor('recurso') },
+  ];
 
   const allItems = modules.flatMap(m => m.items);
   const completed  = allItems.filter(i => i.myStatus === 'completado' || i.myStatus === 'entregado' || i.myStatus === 'visto').length;
@@ -385,7 +333,7 @@ const StudentRamoView: React.FC<{
               { icon: '🕐',   text: ramo.schedule  },
               { icon: '📍',   text: ramo.room       },
               { icon: '📅',   text: 'Semestre 2025-1' },
-            ].map(({ icon, text }) => (
+            ].filter(({ text }) => !!text).map(({ icon, text }) => (
               <span key={text} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontFamily: "'Georgia', serif", display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span>{icon}</span>{text}
               </span>
@@ -435,7 +383,7 @@ const StudentRamoView: React.FC<{
 
                 {/* Items */}
                 {mod.items.map((item, idx) => {
-                  const cfg = typeConfig[item.type];
+                  const cfg = typeConfig[item.type as keyof typeof typeConfig];
                   return (
                     <div key={item.id} style={{
                       padding: '16px 20px',
@@ -570,34 +518,12 @@ const StudentRamoView: React.FC<{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 15, fontWeight: 700, color: C.white, flexShrink: 0,
                 }}>
-                  {ramo.professor.split(' ').map(w => w[0]).slice(0, 2).join('')}
+                  {(ramo.professor || '?').split('@')[0].slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: C.navyDark, fontFamily: "'Georgia', serif" }}>{ramo.professor}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.navyDark, fontFamily: "'Georgia', serif" }}>{ramo.professor || 'Sin asignar'}</div>
                   <div style={{ fontSize: 11, color: C.gold, marginTop: 2, fontWeight: 700 }}>USS DOCENTE</div>
                 </div>
-              </div>
-            </div>
-
-            {/* Info del ramo */}
-            <div style={{ background: C.white, borderRadius: 14, boxShadow: '0 2px 12px rgba(26,39,68,0.06)', overflow: 'hidden' }}>
-              <div style={{ padding: '12px 16px', background: C.navyDark }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)', fontFamily: "'Georgia', serif", textTransform: 'uppercase', letterSpacing: 1 }}>Detalles</span>
-              </div>
-              <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {[
-                  { icon: '📅', label: 'Horario',   value: ramo.schedule },
-                  { icon: '📍', label: 'Sala',      value: ramo.room     },
-                  { icon: '🏅', label: 'Créditos',  value: `${ramo.credits} SCT` },
-                ].map(d => (
-                  <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 18, flexShrink: 0 }}>{d.icon}</span>
-                    <div>
-                      <div style={{ fontSize: 10, color: C.gray400, textTransform: 'uppercase', letterSpacing: 0.8 }}>{d.label}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: C.navyDark, fontFamily: "'Georgia', serif" }}>{d.value}</div>
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
 
@@ -607,16 +533,19 @@ const StudentRamoView: React.FC<{
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.7)', fontFamily: "'Georgia', serif", textTransform: 'uppercase', letterSpacing: 1 }}>Practicar simulaciones</span>
               </div>
               <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {ramo.chatbots.map(bot => (
+                {([
+                  { name: 'Teo' as const, emoji: '🧒', age: 9, diagnosis: 'DEA · F81.0' },
+                  { name: 'Jojo' as const, emoji: '👧', age: 15, diagnosis: 'DIL' },
+                ]).map(bot => (
                   <button key={bot.name} onClick={() => onStartChat(bot.name)}
                     style={{
                       width: '100%', padding: '10px 14px', borderRadius: 10,
-                      border: `1px solid ${ramo.color}30`, background: `${ramo.color}08`,
-                      color: ramo.color, cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                      border: `1px solid ${C.navy}30`, background: `${C.navy}08`,
+                      color: C.navy, cursor: 'pointer', fontSize: 13, fontWeight: 700,
                       fontFamily: "'Georgia', serif", display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.15s',
                     }}
-                    onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = `${ramo.color}18`}
-                    onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = `${ramo.color}08`}
+                    onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background = `${C.navy}18`}
+                    onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background = `${C.navy}08`}
                   >
                     <span style={{ fontSize: 18 }}>{bot.emoji}</span>
                     <div style={{ textAlign: 'left' }}>
@@ -698,7 +627,23 @@ const MyCoursesView: React.FC<{
   onStartChat: (c: 'Teo' | 'Jojo') => void;
   onOpenRamo: (id: number) => void;
 }> = ({ user, onStartChat, onOpenRamo }) => {
-  const totalCredits = mockRamos.reduce((s, r) => s + r.credits, 0);
+  const { token } = useAuth();
+  const [ramos, setRamos] = useState<RamoReal[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRamos = async () => {
+      try {
+        const res = await fetch(`${API}/ramos/mios`, { headers: authHeaders(token) });
+        if (res.ok) setRamos(await res.json());
+      } catch (e) {
+        console.error('[MyCoursesView] Error cargando ramos:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRamos();
+  }, [token]);
 
   return (
     <div style={{ flex: 1, background: C.gray50 }}>
@@ -732,11 +677,10 @@ const MyCoursesView: React.FC<{
               {user?.name} {user?.lastName}
             </div>
             <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginTop: 4 }}>{user?.email}</div>
-            <div style={{ fontSize: 12, color: C.gold, marginTop: 6, fontWeight: 600 }}>Educación · 5° Semestre</div>
           </div>
           <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-            <div style={{ fontSize: 28, fontWeight: 800, color: C.white, fontFamily: "'Georgia', serif" }}>{totalCredits}</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>créditos totales</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: C.white, fontFamily: "'Georgia', serif" }}>{ramos.length}</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>ramo{ramos.length !== 1 ? 's' : ''} inscrito{ramos.length !== 1 ? 's' : ''}</div>
           </div>
         </div>
 
@@ -745,44 +689,43 @@ const MyCoursesView: React.FC<{
           Ramos inscritos · Semestre 2025-1
         </div>
 
+        {loading && <div style={{ color: C.gray400, fontSize: 13 }}>Cargando ramos…</div>}
+        {!loading && ramos.length === 0 && (
+          <div style={{ color: C.gray400, fontSize: 13 }}>Aún no estás matriculado en ningún ramo.</div>
+        )}
+
         {/* Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 18 }}>
-          {mockRamos.map(ramo => (
+          {ramos.map((ramo, idx) => {
+            const color = RAMO_COLORS[idx % RAMO_COLORS.length];
+            return (
             <div key={ramo.id} style={{
               background: C.white, borderRadius: 16,
               boxShadow: '0 2px 12px rgba(26,39,68,0.06)', overflow: 'hidden',
             }}>
-              <div style={{ height: 6, background: ramo.color }} />
+              <div style={{ height: 6, background: color }} />
               <div style={{ padding: '18px 22px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                <div style={{ marginBottom: 10 }}>
                   <div style={{
-                    fontSize: 11, fontWeight: 800, color: ramo.color,
-                    background: `${ramo.color}15`, padding: '3px 10px',
+                    fontSize: 11, fontWeight: 800, color, display: 'inline-block',
+                    background: `${color}15`, padding: '3px 10px',
                     borderRadius: 6, fontFamily: "'Georgia', serif",
-                  }}>{ramo.code}</div>
-                  <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: '#dcfce7', color: '#16a34a' }}>
-                    {ramo.status}
-                  </span>
+                  }}>{ramo.codigo}</div>
                 </div>
 
                 <div style={{ fontSize: 16, fontWeight: 800, color: C.navyDark, fontFamily: "'Georgia', serif", marginBottom: 8, lineHeight: 1.2 }}>
-                  {ramo.name}
+                  {ramo.nombre}
                 </div>
-                <div style={{ fontSize: 12, color: C.gray400, marginBottom: 4 }}>👨‍🏫 {ramo.professor}</div>
-                <div style={{ fontSize: 12, color: C.gray400, marginBottom: 4 }}>🕐 {ramo.schedule}</div>
-                <div style={{ fontSize: 12, color: C.gray400, marginBottom: 14 }}>📍 {ramo.room}</div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: `1px solid ${C.gray100}`, marginBottom: 14 }}>
-                  <div style={{ fontSize: 11, color: C.gray400 }}>Créditos</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: ramo.color, fontFamily: "'Georgia', serif" }}>{ramo.credits} SCT</div>
-                </div>
+                {ramo.profesor_correo && (
+                  <div style={{ fontSize: 12, color: C.gray400, marginBottom: 14 }}>👨‍🏫 {ramo.profesor_correo}</div>
+                )}
 
                 {/* Actions */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <button onClick={() => onOpenRamo(ramo.id)}
                     style={{
                       width: '100%', padding: '10px 14px', borderRadius: 10,
-                      border: 'none', background: ramo.color, color: C.white,
+                      border: 'none', background: color, color: C.white,
                       cursor: 'pointer', fontSize: 13, fontWeight: 700,
                       fontFamily: "'Georgia', serif", transition: 'opacity 0.15s',
                     }}
@@ -795,17 +738,20 @@ const MyCoursesView: React.FC<{
                   <div style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: 1, marginTop: 4 }}>
                     Acceso rápido:
                   </div>
-                  {ramo.chatbots.map(bot => (
+                  {([
+                    { name: 'Teo' as const, emoji: '🧒', age: 9, diagnosis: 'DEA · F81.0' },
+                    { name: 'Jojo' as const, emoji: '👧', age: 15, diagnosis: 'DIL' },
+                  ]).map(bot => (
                     <button key={bot.name} onClick={() => onStartChat(bot.name)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12,
                         padding: '9px 14px', borderRadius: 10,
-                        border: `1px solid ${ramo.color}30`,
-                        background: `${ramo.color}08`, cursor: 'pointer',
+                        border: `1px solid ${color}30`,
+                        background: `${color}08`, cursor: 'pointer',
                         transition: 'all 0.15s', textAlign: 'left',
                       }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${ramo.color}18`; (e.currentTarget as HTMLButtonElement).style.transform = 'translateX(3px)'; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${ramo.color}08`; (e.currentTarget as HTMLButtonElement).style.transform = 'translateX(0)'; }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = `${color}18`; (e.currentTarget as HTMLButtonElement).style.transform = 'translateX(3px)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = `${color}08`; (e.currentTarget as HTMLButtonElement).style.transform = 'translateX(0)'; }}
                     >
                       <span style={{ fontSize: 20 }}>{bot.emoji}</span>
                       <div>
@@ -820,7 +766,8 @@ const MyCoursesView: React.FC<{
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

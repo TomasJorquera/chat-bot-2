@@ -190,14 +190,19 @@ const SimulacionFlow: React.FC<{
 
   useEffect(() => { return () => { audioRef.current?.pause(); }; }, []);
 
-  const speakAgentResponse = async (text: string, agent: 'Teo' | 'Jojo') => {
+  const speakAgentResponse = async (text: string, agent: 'Teo' | 'Jojo', mensajeId?: number) => {
     if (!audioEnabled) return;
     audioRef.current?.pause();
     try {
       const res = await fetch(`${API}/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, agent }),
+        body: JSON.stringify({
+          text,
+          agent,
+          entrega_id: entregaId ?? undefined,
+          mensaje_entrega_id: mensajeId,
+        }),
       });
       const { audio_b64 } = await res.json();
       if (!audio_b64) return;
@@ -311,6 +316,7 @@ const SimulacionFlow: React.FC<{
     setIsLoading(true);
     try {
       let responseText = '';
+      let mensajeId: number | undefined;
       if (entregaId) {
         // Simulacion flow: save messages to DB under this entrega
         const res = await fetch(`${API}/simulacion/entrega/${entregaId}/mensaje`, {
@@ -324,6 +330,7 @@ const SimulacionFlow: React.FC<{
         });
         const data = await res.json();
         responseText = data.respuesta || data.response || 'Sin respuesta.';
+        mensajeId = data.mensaje_id;
       } else {
         // Fallback: old /chat endpoint (no entrega tracking)
         const res = await fetch(`${API}/chat`, {
@@ -339,7 +346,7 @@ const SimulacionFlow: React.FC<{
         responseText = data.response || data.message || 'Sin respuesta.';
       }
       setMessages(h => [...h, { role: 'assistant', content: responseText }]);
-      speakAgentResponse(responseText, selectedAgent);
+      speakAgentResponse(responseText, selectedAgent, mensajeId);
     } catch {
       setMessages(h => [...h, {
         role: 'assistant',

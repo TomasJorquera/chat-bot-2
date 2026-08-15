@@ -6,7 +6,7 @@ services:
       context: ./backend
       dockerfile: dockerfile
     ports:
-      - "8000:8000"
+      - "8001:8000" # host:8001 -> contenedor:8000. Host 8000 lo ocupa un SQL Server local.
     volumes:
       # Monta el código local para desarrollo con live-reload
       - ./backend:/app

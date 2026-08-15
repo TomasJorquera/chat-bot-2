@@ -3,6 +3,7 @@ import os
 import shutil
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
@@ -12,6 +13,7 @@ from ..database import SessionLocal
 from ..models import Alumno, Simulacion, Entrega, MensajeEntrega
 from ..schemas import SimulacionCreate, IniciarEntregaRequest, FinalizarEntregaRequest
 from ..utils.ai_engine import generate_gemini_response, chat_gemini_message, chat_deepseek_message
+from ..utils.cost_tracker import calculate_cost
 from ..prompts import PROMPTS
 from .deps import get_db
 
@@ -50,9 +52,12 @@ def crear_simulacion(payload: SimulacionCreate, db: Session = Depends(get_db)):
 # ── GET /simulacion/ramo/{codigo} ─────────────────────────────────────────────
 @router.get("/ramo/{codigo}")
 def listar_simulaciones_ramo(codigo: str, db: Session = Depends(get_db)):
+    # es_prueba excluye la "Sesión de prueba" interna (chat-prueba de
+    # docente/admin) — no es una simulación real asignada a alumnos.
     sims = db.query(Simulacion).filter(
         Simulacion.ramo_codigo == codigo,
         Simulacion.activo == True,
+        Simulacion.es_prueba.is_(False),
     ).all()
     return [
         {
@@ -175,12 +180,13 @@ async def enviar_mensaje_entrega(
     if personaje not in PROMPTS:
         raise HTTPException(status_code=400, detail=f"Personaje '{personaje}' no existe.")
 
-    # Guardar mensaje del alumno (indicar si tiene imagen adjunta)
+    # Guardar mensaje del alumno (indicar si tiene imagen adjunta) — sin costo IA propio
     content_user = mensaje if not image_base64 else f"{mensaje} [imagen adjunta]"
     db.add(MensajeEntrega(entrega_id=entrega_id, role="user", content=content_user))
     db.commit()
 
-    # Generar respuesta via Gemini 2.0 Flash Lite (soporta imagen)
+    # Generar respuesta via Gemini 2.5 Flash Lite (soporta imagen), registrando tokens reales
+    usage: dict = {}
     try:
         respuesta = await chat_gemini_message(
             system_prompt=PROMPTS[personaje],
@@ -188,15 +194,40 @@ async def enviar_mensaje_entrega(
             message=mensaje,
             image_base64=image_base64,
             image_mime=image_mime,
+            usage_holder=usage,
+            personaje=personaje,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error del modelo: {str(e)}")
 
-    # Guardar respuesta del agente
-    db.add(MensajeEntrega(entrega_id=entrega_id, role="assistant", content=respuesta))
-    db.commit()
+    turn_cost = calculate_cost(
+        usage.get("model", "gemini-2.5-flash-lite"),
+        usage.get("input_tokens", 0),
+        usage.get("output_tokens", 0),
+        usage.get("cached_tokens", 0),
+    )
 
-    return {"respuesta": respuesta, "personaje": personaje}
+    # Guardar respuesta del agente con su costo
+    mensaje_asistente = MensajeEntrega(
+        entrega_id=entrega_id, role="assistant", content=respuesta,
+        model_usado=usage.get("model"),
+        input_tokens=usage.get("input_tokens", 0),
+        output_tokens=usage.get("output_tokens", 0),
+        cached_tokens=usage.get("cached_tokens", 0),
+        cost_usd=turn_cost,
+    )
+    db.add(mensaje_asistente)
+
+    entrega.total_input_tokens  += usage.get("input_tokens", 0)
+    entrega.total_output_tokens += usage.get("output_tokens", 0)
+    entrega.total_cached_tokens += usage.get("cached_tokens", 0)
+    entrega.total_cost_usd      += Decimal(str(turn_cost))
+    db.commit()
+    db.refresh(mensaje_asistente)
+
+    # mensaje_id se lo pasa el frontend a /tts para enlazar la generación de
+    # voz con el turno exacto que la originó (ver GeneracionVoz).
+    return {"respuesta": respuesta, "personaje": personaje, "mensaje_id": mensaje_asistente.id}
 
 
 # ── POST /entrega/{id}/finalizar ──────────────────────────────────────────────
@@ -226,17 +257,30 @@ async def finalizar_entrega(
         },
     }
 
+    eval_usage: dict = {}
     try:
-        evaluacion = await generate_gemini_response(PROMPTS["Evaluator"], formatted)
+        evaluacion = await generate_gemini_response(PROMPTS["Evaluator"], formatted, usage_holder=eval_usage)
     except Exception as e:
         evaluacion = {"total_score": 0, "performance_range": "Error", "conclusion": str(e), "criteria": []}
 
     score = evaluacion.get("total_score", 0) if isinstance(evaluacion, dict) else 0
 
+    eval_cost = calculate_cost(
+        eval_usage.get("model", "gemini-2.5-flash-lite"),
+        eval_usage.get("input_tokens", 0),
+        eval_usage.get("output_tokens", 0),
+        eval_usage.get("cached_tokens", 0),
+    )
+
     entrega.estado       = "completada"
     entrega.puntaje      = score
     entrega.evaluacion_json = json.dumps(evaluacion, ensure_ascii=False)
     entrega.fecha_fin    = datetime.utcnow()
+
+    entrega.total_input_tokens  += eval_usage.get("input_tokens", 0)
+    entrega.total_output_tokens += eval_usage.get("output_tokens", 0)
+    entrega.total_cached_tokens += eval_usage.get("cached_tokens", 0)
+    entrega.total_cost_usd      += Decimal(str(eval_cost))
     db.commit()
 
     return {

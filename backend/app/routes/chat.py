@@ -41,6 +41,7 @@ async def chat(chat_request: ChatRequest, db: Session = Depends(get_db)):
             message=user_message,
             image_base64=chat_request.image_base64,
             image_mime=chat_request.image_mime,
+            personaje=character_name,
         )
         print(f"[CHAT] Respuesta enviada: {respuesta}")
 

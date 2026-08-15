@@ -42,14 +42,14 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
   const { login, loading } = useAuth();
 
   const validateEmail = (email: string) =>
-    email.endsWith('@correo.uss.cl') || email.endsWith('@docente.uss.cl');
+    email.endsWith('@correo.uss.cl') || email.endsWith('@docente.uss.cl') || email.endsWith('@admin.uss.cl');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
     if (!validateEmail(email)) {
-      setError('El correo debe terminar en @correo.uss.cl o @docente.uss.cl');
+      setError('El correo debe terminar en @correo.uss.cl, @docente.uss.cl o @admin.uss.cl');
       return;
     }
 

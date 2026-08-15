@@ -52,13 +52,13 @@ cd backend && uvicorn app.main:app --reload  # API at http://localhost:8000
 ### AI Models Used
 | Role | Model | Reason |
 |------|-------|---------|
-| **Chat Teo/Jojo** | `gemini-2.0-flash-lite` (Gemini) | Multimodal: handles text + image uploads. DeepSeek as automatic fallback. |
-| **Chat fallback** | `deepseek-chat` (DeepSeek) | Fallback when Gemini fails |
+| **Chat Teo/Jojo** | `gemini-2.5-flash-lite` (Gemini) | Multimodal: handles text + image uploads. DeepSeek as automatic fallback. (Migrated from `gemini-2.0-flash-lite`, shut down by Google 2026-06-01.) |
+| **Chat fallback** | `deepseek-v4-flash` (DeepSeek) | Fallback when Gemini fails. (Migrated from `deepseek-chat`, deprecated 2026-07-24.) |
 | **Evaluation** | `gemini-2.5-flash-lite` (Gemini) | JSON output, 11-criteria evaluation. DeepSeek as fallback. |
 | **TTS (Teo/Jojo voice)** | `gpt-4o-mini-tts` (OpenAI) | Accepts character instructions for contextual voice (childlike, hesitant, etc.) |
 | **STT (user voice)** | Web Speech API (browser native) | Free, no API key, sends on mic button release |
 
-**Why Gemini for chat instead of DeepSeek**: Gemini 2.0 Flash Lite is multimodal — it can receive images uploaded by the teacher during the chat session (e.g., a drawing of 4 apples for a math activity). DeepSeek is text-only. Context consistency is maintained because the frontend sends the full history on every request; Gemini and DeepSeek are both stateless.
+**Why Gemini for chat instead of DeepSeek**: Gemini 2.5 Flash Lite is multimodal — it can receive images uploaded by the teacher during the chat session (e.g., a drawing of 4 apples for a math activity). DeepSeek is text-only. Context consistency is maintained because the frontend sends the full history on every request; Gemini and DeepSeek are both stateless.
 
 ### TTS Pipeline
 ```

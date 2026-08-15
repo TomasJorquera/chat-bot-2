@@ -27,7 +27,8 @@ export const useAuth = () => {
 };
 
 // Determina el rol a partir del dominio del correo
-const determineUserType = (email: string): 'student' | 'teacher' => {
+const determineUserType = (email: string): 'student' | 'teacher' | 'admin' => {
+  if (email.endsWith('@admin.uss.cl')) return 'admin';
   if (email.endsWith('@docente.uss.cl')) return 'teacher';
   return 'student';
 };

@@ -3,11 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 
-from .routes import chat, evaluation, auth, experimento, admin, simulacion, tts
-from .database import engine, Base
+from .routes import chat, evaluation, auth, experimento, admin, simulacion, tts, ramos
+from .routes.v1 import api_router as api_v1_router
+from . import models_v2  # noqa: F401 — registra los modelos nuevos en Base.metadata
 
-# Crea todas las tablas (existentes + nuevas) al iniciar
-Base.metadata.create_all(bind=engine)
+# El esquema se gestiona con Alembic (ver backend/ARCHITECTURE_PHASE_1.md).
+# Ya no se usa Base.metadata.create_all(): las migraciones son la única
+# fuente de verdad para crear/alterar tablas, tanto legacy como nuevas.
 
 app = FastAPI(
     title="Chatbot Educativo API",
@@ -39,8 +41,13 @@ app.include_router(evaluation.router, tags=["Evaluation"])
 app.include_router(auth.router,        prefix="/auth",        tags=["Auth"])
 app.include_router(experimento.router, prefix="/experimento", tags=["Experimento"])
 app.include_router(admin.router,       prefix="/admin",       tags=["Admin"])
+app.include_router(ramos.router,       prefix="/admin/ramos", tags=["Admin - Ramos"])
+app.include_router(ramos.teacher_router, prefix="/ramos",    tags=["Ramos - Docente"])
 app.include_router(simulacion.router,  prefix="/simulacion",  tags=["Simulacion"])
 app.include_router(tts.router,         tags=["TTS"])
+
+# ── API v1 (arquitectura Fase 2) ───────────────────────────────────────────────
+app.include_router(api_v1_router, prefix="/api/v1")
 
 # ── Archivos estáticos (planificaciones subidas por alumnos) ──────────────────
 uploads_dir = "uploads"

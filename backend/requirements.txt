@@ -6,12 +6,17 @@ starlette==0.48.0
 # Base de datos
 SQLAlchemy==2.0.44
 psycopg[binary]
+alembic==1.17.2
 
 # IA - Google Gemini
 google-generativeai==0.8.5
 
 # IA - OpenAI (tambien usado para DeepSeek)
 openai>=1.30.0
+tiktoken>=0.7.0
+
+# TTS - metadatos de audio (duracion real, sin estimar)
+mutagen>=1.47.0
 
 # Auth
 python-jose[cryptography]>=3.3.0
@@ -25,3 +30,6 @@ reportlab
 python-dotenv==1.1.1
 pydantic==2.12.2
 python-multipart>=0.0.9
+
+# Testing
+pytest==8.4.2
