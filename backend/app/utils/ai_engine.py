@@ -3,14 +3,15 @@ import json
 import re
 import asyncio
 from datetime import timedelta
-import google.generativeai as genai
-from google.generativeai import caching
+from google import genai
+from google.genai import types
 from openai import AsyncOpenAI
 
 from ..voice_profiles import get_voice_profile
 
 # ── Gemini (chat + evaluación) ────────────────────────────────────────────────
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+# SDK nuevo (google-genai) — reemplaza al deprecado google-generativeai.
+gemini_client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # ── Caché explícito del prompt de personalidad de Teo/Jojo ───────────────────
 # Sin esto, cada turno de chat paga precio completo por el prompt de
@@ -20,15 +21,16 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 # los 1024 tokens mínimos que exige la API de caché para este modelo.
 _CACHEABLE_PERSONAJES = {"Teo", "Jojo"}
 _CACHE_TTL = timedelta(minutes=30)
-_prompt_cache: dict[str, "caching.CachedContent"] = {}
+_CACHE_TTL_STR = f"{int(_CACHE_TTL.total_seconds())}s"  # google-genai exige string tipo "1800s", no timedelta
+_prompt_cache: dict[str, "types.CachedContent"] = {}
 _prompt_cache_locks: dict[str, asyncio.Lock] = {p: asyncio.Lock() for p in _CACHEABLE_PERSONAJES}
 
 
-async def _get_cached_model(personaje: str, system_prompt: str):
+async def _get_cached_config(personaje: str, system_prompt: str):
     """
-    Modelo Gemini construido sobre un CachedContent para `personaje`, creándolo
-    o refrescando su TTL (ventana deslizante: solo se paga almacenamiento
-    mientras el personaje se sigue usando) según haga falta.
+    GenerateContentConfig apuntando a un CachedContent para `personaje`,
+    creándolo o refrescando su TTL (ventana deslizante: solo se paga
+    almacenamiento mientras el personaje se sigue usando) según haga falta.
 
     Retorna None si el caché no está disponible — el llamador debe caer al
     modelo sin caché en ese caso; un problema de facturación nunca debe
@@ -38,22 +40,27 @@ async def _get_cached_model(personaje: str, system_prompt: str):
         cached = _prompt_cache.get(personaje)
         if cached is not None:
             try:
-                cached.update(ttl=_CACHE_TTL)
-                return genai.GenerativeModel.from_cached_content(cached)
+                gemini_client.caches.update(
+                    name=cached.name,
+                    config=types.UpdateCachedContentConfig(ttl=_CACHE_TTL_STR),
+                )
+                return types.GenerateContentConfig(cached_content=cached.name)
             except Exception as e:
                 print(f"[CACHE] {personaje}: caché inválido server-side ({e}), recreando")
                 _prompt_cache.pop(personaje, None)
 
         try:
-            cached = caching.CachedContent.create(
-                model="models/gemini-2.5-flash-lite",
-                display_name=f"prompt-{personaje}",
-                system_instruction=system_prompt,
-                ttl=_CACHE_TTL,
+            cached = gemini_client.caches.create(
+                model="gemini-2.5-flash-lite",
+                config=types.CreateCachedContentConfig(
+                    display_name=f"prompt-{personaje}",
+                    system_instruction=system_prompt,
+                    ttl=_CACHE_TTL_STR,
+                ),
             )
             _prompt_cache[personaje] = cached
             print(f"[CACHE] {personaje}: caché creado ({cached.name})")
-            return genai.GenerativeModel.from_cached_content(cached)
+            return types.GenerateContentConfig(cached_content=cached.name)
         except Exception as e:
             print(f"[CACHE] {personaje}: no se pudo crear caché ({e}), usando modelo sin caché")
             return None
@@ -75,9 +82,9 @@ def _build_gemini_history(history: list) -> list:
         role = h.get("role", "user")
         content = h.get("content", "")
         if role == "user" and content:
-            gemini_history.append({"role": "user", "parts": [content]})
+            gemini_history.append({"role": "user", "parts": [{"text": content}]})
         elif role == "assistant" and content:
-            gemini_history.append({"role": "model", "parts": [content]})
+            gemini_history.append({"role": "model", "parts": [{"text": content}]})
     return gemini_history
 
 
@@ -96,22 +103,24 @@ async def chat_gemini_message(system_prompt: str, history: list, message: str,
     prompt de personalidad en vez de reenviarlo completo en cada turno.
     """
     try:
-        model = None
+        config = None
         if personaje in _CACHEABLE_PERSONAJES:
-            model = await _get_cached_model(personaje, system_prompt)
-        if model is None:
-            model = genai.GenerativeModel(
-                model_name="gemini-2.5-flash-lite",
-                system_instruction=system_prompt,
-            )
-        chat = model.start_chat(history=_build_gemini_history(history))
+            config = await _get_cached_config(personaje, system_prompt)
+        if config is None:
+            config = types.GenerateContentConfig(system_instruction=system_prompt)
+
+        chat = gemini_client.chats.create(
+            model="gemini-2.5-flash-lite",
+            config=config,
+            history=_build_gemini_history(history),
+        )
 
         # Construir partes del mensaje (texto + imagen opcional)
         parts = []
         if image_base64 and image_mime:
             import base64 as b64lib
             image_bytes = b64lib.b64decode(image_base64)
-            parts.append({"mime_type": image_mime, "data": image_bytes})
+            parts.append(types.Part.from_bytes(data=image_bytes, mime_type=image_mime))
         parts.append(message)
 
         response = chat.send_message(parts)
@@ -323,14 +332,14 @@ async def generate_gemini_response(prompt, conversation, usage_holder: dict = No
 
     # Intento 1: Gemini con response_mime_type=application/json
     try:
-        model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash-lite",
-            generation_config=genai.GenerationConfig(
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=prompt_completo,
+            config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 max_output_tokens=8192,
             ),
         )
-        response = model.generate_content(prompt_completo)
         text = (response.text or "").strip()
         result = _parse_json_text(text)
         if result is not None:
@@ -418,11 +427,11 @@ def get_audio_duration_ms(audio_bytes: bytes) -> int | None:
 def iniciar_chat_con_historial(prompt_sistema, historial):
     """Mantiene compatibilidad con la ruta /chat — retorna sesión de chat Gemini."""
     try:
-        model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
-            system_instruction=prompt_sistema,
+        chat_session = gemini_client.chats.create(
+            model="gemini-2.5-flash",
+            config=types.GenerateContentConfig(system_instruction=prompt_sistema),
+            history=historial,
         )
-        chat_session = model.start_chat(history=historial)
         return chat_session
     except Exception as e:
         print(f"[AI_ENGINE] Error al iniciar chat: {e}")

@@ -9,7 +9,7 @@ psycopg[binary]
 alembic==1.17.2
 
 # IA - Google Gemini
-google-generativeai==0.8.5
+google-genai==2.18.1
 
 # IA - OpenAI (tambien usado para DeepSeek)
 openai>=1.30.0
