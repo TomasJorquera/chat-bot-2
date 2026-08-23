@@ -60,6 +60,12 @@ cd backend && uvicorn app.main:app --reload  # API at http://localhost:8000
 
 **Why Gemini for chat instead of DeepSeek**: Gemini 2.5 Flash Lite is multimodal — it can receive images uploaded by the teacher during the chat session (e.g., a drawing of 4 apples for a math activity). DeepSeek is text-only. Context consistency is maintained because the frontend sends the full history on every request; Gemini and DeepSeek are both stateless.
 
+### Explicit Gemini Context Caching
+- `ai_engine.py` caches the static personality prompt for `Teo`/`Jojo` via `genai.caching.CachedContent` (`_get_cached_model()`), TTL 30 min, refreshed on each use.
+- Requires a Gemini API key with billing linked — free-tier accounts have `TotalCachedContentStorageTokensPerModelFreeTier limit=0` and caching silently falls back to an uncached model (chat still works, just without the cost saving). Check backend logs for `[CACHE] ... caché creado` vs `no se pudo crear caché` to confirm it's active.
+- Gemini's real minimum cacheable size is **2048 tokens** (not the 1024 documented in some docs) — Teo's prompt qualifies, Jojo's currently does not.
+- `experiment/google-genai-sdk` branch has the same feature ported to the new `google-genai` SDK (the old `google-generativeai` package is deprecated/EOL); pending the user's manual functional testing before merge.
+
 ### TTS Pipeline
 ```
 Chat text → _detect_emotional_state() → dynamic TTS instructions → gpt-4o-mini-tts → audio
