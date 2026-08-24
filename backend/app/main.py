@@ -27,6 +27,7 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://localhost",
         "https://chat-bot2-frontend.onrender.com",
+        "https://chat-bot-2-ykh5.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
