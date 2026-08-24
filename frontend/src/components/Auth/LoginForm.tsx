@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, LogIn, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { C } from './theme';
 
 interface LoginFormProps {
   onSwitchToRegister: () => void;
@@ -9,25 +10,25 @@ interface LoginFormProps {
 
 const inputBase: React.CSSProperties = {
   width: '100%',
-  background: 'rgba(255,255,255,0.05)',
-  border: '1px solid rgba(255,255,255,0.10)',
+  background: C.papelAlt,
+  border: `1px solid ${C.borde}`,
   borderRadius: 12,
-  color: '#fff',
+  color: C.texto,
   padding: '12px 14px 12px 42px',
   fontSize: 14,
   outline: 'none',
   transition: 'border-color 0.2s, box-shadow 0.2s',
 };
 
-const DarkInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => {
+const ThemedInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => {
   const [focused, setFocused] = useState(false);
   return (
     <input
       {...props}
       style={{
         ...inputBase,
-        borderColor: focused ? 'rgba(96,165,250,0.6)' : 'rgba(255,255,255,0.10)',
-        boxShadow: focused ? '0 0 0 3px rgba(59,130,246,0.15)' : 'none',
+        borderColor: focused ? C.turquesa : C.borde,
+        boxShadow: focused ? '0 0 0 3px rgba(30,158,140,0.15)' : 'none',
       }}
       onFocus={(e) => { setFocused(true); props.onFocus?.(e); }}
       onBlur={(e)  => { setFocused(false); props.onBlur?.(e); }}
@@ -71,12 +72,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
 
       {/* Email */}
       <div>
-        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
+        <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: C.textoMuted }}>
           Correo electrónico
         </label>
         <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-          <DarkInput
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: C.textoFaint }} />
+          <ThemedInput
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -88,12 +89,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
 
       {/* Password */}
       <div>
-        <label className="block text-xs font-semibold text-slate-400 uppercase tracking-widest mb-2">
+        <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: C.textoMuted }}>
           Contraseña
         </label>
         <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-          <DarkInput
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: C.textoFaint }} />
+          <ThemedInput
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -107,7 +108,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
       {error && (
         <div
           className="flex items-center space-x-2.5 px-4 py-3 rounded-xl text-sm"
-          style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5' }}
+          style={{ background: 'rgba(232,98,62,0.10)', border: '1px solid rgba(232,98,62,0.25)', color: '#c14a2a' }}
         >
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{error}</span>
@@ -118,12 +119,13 @@ const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onClose }) =>
       <button
         type="submit"
         disabled={loading}
-        className="w-full flex items-center justify-center space-x-2 font-bold py-3 rounded-xl text-white transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+        className="w-full flex items-center justify-center space-x-2 font-bold py-3 rounded-xl transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
         style={{
+          color: C.white,
           background: loading
-            ? 'rgba(96,165,250,0.4)'
-            : 'linear-gradient(135deg, #3b82f6, #7c3aed)',
-          boxShadow: loading ? 'none' : '0 8px 24px rgba(59,130,246,0.35)',
+            ? 'rgba(30,158,140,0.4)'
+            : `linear-gradient(135deg, ${C.turquesa}, ${C.azulSimbolo})`,
+          boxShadow: loading ? 'none' : '0 8px 24px rgba(30,158,140,0.35)',
         }}
       >
         <LogIn className="w-4 h-4" />

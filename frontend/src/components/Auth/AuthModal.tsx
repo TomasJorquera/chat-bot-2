@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Brain } from 'lucide-react';
+import { X } from 'lucide-react';
 import LoginForm from './LoginForm';
+import { C, LOGO_ICON_SMALL } from './theme';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -25,9 +26,9 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{
-        background: 'rgba(4,9,26,0.80)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        background: 'rgba(43,42,40,0.45)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
         opacity: visible ? 1 : 0,
         transition: 'opacity 0.25s ease',
       }}
@@ -38,7 +39,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         className="absolute pointer-events-none"
         style={{
           width: 500, height: 500,
-          background: 'radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%)',
+          background: `radial-gradient(circle, rgba(30,158,140,0.18) 0%, transparent 70%)`,
           filter: 'blur(60px)',
           top: '50%', left: '50%',
           transform: 'translate(-50%, -50%)',
@@ -48,12 +49,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       <div
         className="relative w-full max-w-md"
         style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '1px solid rgba(255,255,255,0.10)',
+          background: C.white,
+          border: `1px solid ${C.borde}`,
           borderRadius: 24,
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          boxShadow: '0 40px 80px -20px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05) inset',
+          boxShadow: '0 40px 80px -20px rgba(43,42,40,0.35)',
           transform: visible ? 'translateY(0) scale(1)' : 'translateY(24px) scale(0.97)',
           transition: 'transform 0.3s ease',
         }}
@@ -61,14 +60,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-8 pt-7 pb-0">
           <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-violet-500 rounded-lg flex items-center justify-center">
-              <Brain className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-white font-extrabold text-sm tracking-tight">Chat-BOT</span>
+            <img src={LOGO_ICON_SMALL} alt="SimulAula" style={{ width: 28, height: 28, display: 'block' }} />
+            <span style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.3px', color: C.texto }}>
+              Simul<span style={{ color: C.azulSimbolo }}>Aula</span>
+            </span>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+            className="w-8 h-8 flex items-center justify-center rounded-lg transition-all"
+            style={{ color: C.textoMuted }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = C.papelAlt; (e.currentTarget as HTMLButtonElement).style.color = C.texto; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = C.textoMuted; }}
           >
             <X className="w-4 h-4" />
           </button>
@@ -79,12 +81,11 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <div
             className="flex items-center justify-center rounded-xl py-3 w-full"
             style={{
-              background: 'linear-gradient(135deg, rgba(59,130,246,0.5), rgba(139,92,246,0.5))',
-              border: '1px solid rgba(255,255,255,0.12)',
-              boxShadow: '0 2px 16px rgba(59,130,246,0.25)',
+              background: `linear-gradient(135deg, ${C.turquesa}, ${C.azulSimbolo})`,
+              boxShadow: `0 4px 16px rgba(30,158,140,0.3)`,
             }}
           >
-            <span className="text-sm font-bold text-white tracking-wide">
+            <span className="text-sm font-bold tracking-wide" style={{ color: C.white }}>
               Iniciar sesión
             </span>
           </div>
