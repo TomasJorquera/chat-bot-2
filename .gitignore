@@ -32,3 +32,9 @@ docker-compose.override.yml
 # Archivos de sistema operativo
 .DS_Store
 Thumbs.dbbackend/uploads/
+
+# Herramientas locales / capturas de prueba
+.mcp.json
+.playwright-mcp/
+homepage-prod-full.png
+login-modal-prod.png
