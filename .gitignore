@@ -31,7 +31,8 @@ docker-compose.override.yml
 
 # Archivos de sistema operativo
 .DS_Store
-Thumbs.dbbackend/uploads/
+Thumbs.db
+backend/uploads/
 
 # Herramientas locales / capturas de prueba
 .mcp.json
