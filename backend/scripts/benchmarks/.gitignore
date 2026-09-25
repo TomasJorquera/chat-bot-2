@@ -1,0 +1,7 @@
+# Material de prueba real (voz del docente, conversaciones de estudiantes):
+# se queda solo en local, nunca en GitHub.
+datos/**
+!datos/**/
+!datos/**/.gitkeep
+resultados/**
+!resultados/.gitkeep
