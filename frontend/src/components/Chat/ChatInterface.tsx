@@ -18,6 +18,52 @@ interface ChatInterfaceProps {
 
 // (HistoryMessage removed — not used)
 
+// Tamaño máximo de lado (px) y calidad JPEG para las imágenes que se envían
+// al modelo de IA. Una foto de celular sin redimensionar (3000-4000px) gasta
+// muchos más tokens de los que aportan en calidad de lectura: los modelos de
+// visión igual la reducen internamente. 1280px conserva texto legible en una
+// hoja completa (guía, ficha) sin pagar por resolución que nadie usa.
+const MAX_IMAGE_DIMENSION = 1280;
+const IMAGE_JPEG_QUALITY = 0.9;
+
+/**
+ * Redimensiona y recomprime una imagen a JPEG antes de subirla, para bajar
+ * el costo por tokens de imagen en el modelo de IA. Si la imagen ya es más
+ * chica que el máximo, se recomprime igual (mismo tamaño) para aprovechar
+ * la compresión JPEG en fotos que vengan en PNG sin comprimir.
+ */
+const resizeImageForUpload = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('No se pudo leer la imagen'));
+      img.onload = () => {
+        const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(img.width, img.height));
+        const width = Math.round(img.width * scale);
+        const height = Math.round(img.height * scale);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('No se pudo procesar la imagen')); return; }
+
+        // Fondo blanco: los pictogramas y capturas con transparencia (PNG)
+        // no deben volverse negros al pasar a JPEG (que no soporta alpha).
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(img, 0, 0, width, height);
+
+        resolve(canvas.toDataURL('image/jpeg', IMAGE_JPEG_QUALITY));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
 const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) => {
   const { character, onBack, entregaId } = props;
   const [messages, setMessages] = useState<Message[]>([]);
@@ -29,14 +75,20 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
+    e.target.value = '';
     if (!file) return;
     setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = () => setImagePreview(reader.result as string);
-    reader.readAsDataURL(file);
-    e.target.value = '';
+    try {
+      const resized = await resizeImageForUpload(file);
+      setImagePreview(resized);
+    } catch (err) {
+      console.error('No se pudo redimensionar la imagen, se usa el archivo original:', err);
+      const reader = new FileReader();
+      reader.onload = () => setImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
   };
 
   const clearImage = () => { setImageFile(null); setImagePreview(null); };
@@ -243,7 +295,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = (props: ChatInterfaceProps) 
 
     const messageToSend = inputValue;
     const imgPreview = imagePreview;
-    const imgMime    = imageFile?.type;
+    // El mime real viene del propio data URL (normalmente image/jpeg, ya
+    // recomprimido por resizeImageForUpload) y no del archivo original,
+    // que puede haber sido PNG/HEIC/etc. antes de la conversión.
+    const imgMime = imgPreview?.match(/^data:(.*?);base64,/)?.[1];
 
     // Mostrar mensaje del usuario con preview de imagen si hay
     const userMessage: Message = {
